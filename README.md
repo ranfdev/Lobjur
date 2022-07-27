@@ -3,8 +3,11 @@
 This a native https://lobste.rs client written using GTK4, libadwaita and ClojureScript (gjs runtime, custom target). 
 
 ## Screenshots
+![Screenshot from 2022-07-27 23-32-17](https://user-images.githubusercontent.com/23294184/181376266-9d930837-750f-4f2c-a3d1-60cc5e88368b.png)
+![Screenshot from 2022-07-27 23-32-26](https://user-images.githubusercontent.com/23294184/181376259-a008bf64-f2f4-47c1-92c9-9954d9fd1d7f.png)
 
-TODO: add
+
+
 
 ## Features
 - Browse hottest and active stories
