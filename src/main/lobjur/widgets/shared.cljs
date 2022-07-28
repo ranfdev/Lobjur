@@ -1,7 +1,6 @@
 (ns lobjur.widgets.shared
   (:require
    [lobjur.state :refer [curr-view]]
-   [lobjur.utils.common :refer [base-url-lobster]]
    ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gtk" :as Gtk]))
 

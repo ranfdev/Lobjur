@@ -4,7 +4,8 @@
    [lobjur.state :refer [curr-view]]
    [rollui.core :as rollui]
    [lobjur.utils.http :as http]
-   [lobjur.utils.common :refer [parse-json base-url-lobster]]
+   [lobjur.utils.common :refer [parse-json]]
+   [lobster.core :as lobster]
    [lobjur.widgets.shared :refer [upvote-btn back-to-home-btn]]
    ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gio" :as Gio]
@@ -67,14 +68,13 @@
                   (.connect "bind" list-bind))]
     (Gtk/ListView.new selection-model factory)))
 
-(defn comments-view [{:keys [title url score tags short_id comment_count]}]
+(defn comments-view [{:keys [title url score tags short_id]}]
   [Adw/Clamp
    :child
    [Gtk/Box
     :orientation Gtk/Orientation.VERTICAL
     :spacing 8
     :margin-top 8
-    :margin-bottom 8
     :margin-start 8
     :margin-end 8
     :.append
@@ -92,7 +92,7 @@
     [Gtk/Box
      :spacing 8
      :.append
-     (let [host (.get_host (.parse_relative base-url-lobster url GLib/UriFlags.NONE))]
+     (let [host (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
        [Gtk/LinkButton
         :css_classes #js ["small" "button" "flat" "caption"]
         :halign Gtk/Align.START
@@ -106,13 +106,13 @@
         :valign Gtk/Align.CENTER
         :css_classes #js ["small" "button" "flat" "tag" "caption"]])]
     :.append
-    (-> (http/get (str "https://lobste.rs/s/" short_id ".json"))
-        (.then parse-json)
+    (-> (lobster/story short_id)
         (.then
          (fn [comments]
            (if (> (count (:comments comments)) 0)
              [Gtk/ScrolledWindow
               :propagate-natural-height true
+              :vexpand true
               :child
               (comments-list-view (:comments comments))]
              [Adw/StatusPage

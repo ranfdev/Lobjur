@@ -8,13 +8,21 @@
 (js* "~{}._promisify(~{}.Session.prototype, 'send_and_read_async', 'send_and_read_finish')", Gio, Soup)
 
 (def session (new Soup/Session #js {:user-agent "lobjur"}))
-(defn get [url]
+(defn get [url & {:as options}]
   (-> (.send_and_read_async
        session
-       (Soup/Message.new "GET", url)
+       (if (:params options)
+         (Soup/Message.new_from_encoded_form
+          "GET",
+          url,
+          (Soup/form_encode_hash (clj->js
+                                  (into {}
+                                        (map
+                                         (fn [[k v]] [(name k) (str v)])
+                                         (:params options))))))
+         (Soup/Message.new "GET", url))
        0
        nil)
       (.then (comp
               ByteArray/toString
-              ByteArray/fromGBytes))
-      (.catch println)))
+              ByteArray/fromGBytes))))

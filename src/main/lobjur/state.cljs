@@ -6,4 +6,4 @@
 (defonce curr-view (atom (init-stories :hottest)))
 
 ;; To test a comment-heavy story, open a story, then evaluate this line
-(swap! curr-view assoc :short_id "jclvos")
+;; (swap! curr-view assoc-in [:story :short_id] "jclvos")

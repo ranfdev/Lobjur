@@ -4,7 +4,7 @@
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
    [lobjur.utils.common :refer [parse-json]]
-   [lobjur.utils.http :as http]))
+   [lobster.core :as lobster]))
 
 (defn user-view [username]
   [Adw/Clamp
@@ -16,8 +16,7 @@
    [Gtk/ScrolledWindow
     :propagate-natural-height true
     :child
-    (-> (http/get (str "https://lobste.rs/u/" username ".json"))
-        (.then parse-json)
+    (-> (lobster/user username)
         (.then
          (fn [user]
            (let [grid (Gtk/Grid. #js {:row_spacing 8

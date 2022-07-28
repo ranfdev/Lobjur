@@ -1,8 +1,9 @@
 (ns lobjur.widgets.window
   (:require
    [lobjur.widgets.comments :refer [comments-view]]
-   [lobjur.widgets.stories-list-view :refer [top-bar stories-list-view compute-stories-url tagged-stories-url]]
+   [lobjur.widgets.stories-list-view :refer [top-bar stories-list-view tagged-stories-url]]
    [lobjur.widgets.user :refer [user-view]]
+   [lobster.core :as lobster]
    [rollui.core :as rollui :refer [derived-atom] :refer-macros [defc]]
    [lobjur.state :refer [curr-view]]
    ["gjs.gi.Gtk" :as Gtk]
@@ -15,7 +16,10 @@
    (fn [v]
      (println v)
      (case (:name v)
-       :stories (stories-list-view top-bar (compute-stories-url (:stories-kw v) (:page v)))
+       :stories (stories-list-view top-bar
+                                   (case (:stories-kw v)
+                                     :hottest (lobster/hottest (select-keys v [:page]))
+                                     :active (lobster/active (select-keys v [:page]))))
        :comments (comments-view (:story v))
        :user (user-view (:username v))
        :tag (stories-list-view
@@ -26,9 +30,8 @@
                 :label (str "Tagged with: " (:tag v))
                 :xalign 0.0
                 :.add_css_class "title-2"])
-             (tagged-stories-url (:tag v)
-                                 (:page v)))
-       (stories-list-view top-bar (compute-stories-url :hottest 0))))))
+             (lobster/tagged (:tag v) (select-keys v [:page])))
+       (stories-list-view top-bar (lobster/hottest))))))
 
 (declare header-bar)
 (defc header-bar []

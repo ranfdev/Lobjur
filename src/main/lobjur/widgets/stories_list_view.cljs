@@ -3,22 +3,15 @@
    [lobjur.widgets.shared :refer [upvote-btn back-to-home-btn]]
    [lobjur.state :as state :refer [curr-view]]
    [lobjur.utils.http :as http]
-   [lobjur.utils.common :refer [parse-json base-url-lobster]]
+   [lobjur.utils.common :refer [parse-json]]
+   [lobster.core :as lobster]
    [rollui.core :as rollui :refer-macros [defc]]
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gtk" :as Gtk]))
 
-(def stories-urls
-  {:active "https://lobste.rs/active.json"
-   :hottest "https://lobste.rs/hottest.json"
-   :recents "https://lobste.rs/recents.json"})
-
 (defn tagged-stories-url [tag page]
   (str "https://lobste.rs/t/" tag ".json" "?page=" page))
-(defn compute-stories-url [kw page]
-  (str (kw stories-urls) "?page=" page))
-
 
 ;;taken from https://stackoverflow.com/a/69122877/11189772
 (js* "function timeAgo(input) {
@@ -68,7 +61,7 @@ global.timeAgo = timeAgo")
        :spacing 8
        :selection-mode Gtk/SelectionMode.NONE
        :.append
-       (let [host (.get_host (.parse_relative base-url-lobster url GLib/UriFlags.NONE))]
+       (let [host (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
          [Gtk/LinkButton
           :css_classes #js ["small" "button" "flat" "caption"]
           :halign Gtk/Align.START
@@ -145,14 +138,12 @@ global.timeAgo = timeAgo")
         :.add_css_class (list "small" "flat")
         :$clicked #(reset! curr-view {:name :search})])]])
 
-(defn stories-widget-provider [url]
-  (-> (http/get url)
-      (.then parse-json)
-      (.then
-       (partial map story-item-widget))
+(defn stories-widget-provider [prom]
+  (-> prom
+      (.then (partial map story-item-widget))
       (.catch println)))
 
-(defn stories-list-view [top-bar url]
+(defn stories-list-view [top-bar prom]
   [Gtk/ScrolledWindow
    :propagate_natural_height true
    :child
@@ -172,7 +163,7 @@ global.timeAgo = timeAgo")
      :.append
      [Gtk/ListBox
       :css_classes #js ["boxed-list"]
-      :.append (stories-widget-provider url)]
+      :.append (stories-widget-provider prom)]
      :.append
      [Gtk/Box
       :hexpand true
