@@ -11,14 +11,10 @@
   </description>
 
   <screenshots>
-    <screenshot type="default" height="752" width="442">
-      <image></image>
-    </screenshot>
-    <screenshot height="752" width="442">
-      <image></image>
-    </screenshot>
-    <screenshot height="844" width="835">
-      <image></image>
+    <screenshot type="default" height="842" width="842">
+      <image>
+      https://user-images.githubusercontent.com/23294184/182030992-7b95dcf3-3428-4eb3-b9fa-38413cbde99b.png
+      </image>
     </screenshot>
   </screenshots>
 
