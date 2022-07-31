@@ -28,8 +28,8 @@
       (update-prop-many w k v))
     (satisfies? IWatchable vs)
     (do
-      (update-prop-once w k @vs)
-      (add-watch vs nil (fn [_ _ _old current] (update-prop-once w k current))))
+      (update-prop-many w k @vs)
+      (add-watch vs nil (fn [_ _ _old current] (update-prop-many w k current))))
     :else (update-prop-once w k vs)))
 
 (defn build-widget [[widget & args]]

@@ -1,42 +1,15 @@
 (ns lobjur.widgets.stories-list-view
   (:require
-   [lobjur.widgets.shared :refer [upvote-btn back-to-home-btn]]
-   [lobjur.state :as state :refer [curr-view]]
-   [lobjur.utils.http :as http]
-   [lobjur.utils.common :refer [parse-json]]
-   [lobster.core :as lobster]
-   [rollui.core :as rollui :refer-macros [defc]]
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.GLib" :as GLib]
-   ["gjs.gi.Gtk" :as Gtk]))
+   ["gjs.gi.Gtk" :as Gtk]
+   [lobjur.state :as state :refer [global-widgets]]
+   [lobjur.widgets.shared :refer [upvote-btn time-ago]]
+   [lobster.core :as lobster]
+   [rollui.core :as rollui :refer [build-ui derived-atom]]))
 
-(defn tagged-stories-url [tag page]
-  (str "https://lobste.rs/t/" tag ".json" "?page=" page))
-
-;;taken from https://stackoverflow.com/a/69122877/11189772
-(js* "function timeAgo(input) {
-  const date = (input instanceof Date) ? input : new Date(input);
-  const formatter = new Intl.RelativeTimeFormat('en');
-  const ranges = {
-    years: 3600 * 24 * 365,
-    months: 3600 * 24 * 30,
-    weeks: 3600 * 24 * 7,
-    days: 3600 * 24,
-    hours: 3600,
-    minutes: 60,
-    seconds: 1
-  };
-  const secondsElapsed = (date.getTime() - Date.now()) / 1000;
-  for (let key in ranges) {
-    if (ranges[key] < Math.abs(secondsElapsed)) {
-      const delta = secondsElapsed / ranges[key];
-      return formatter.format(Math.round(delta), key);
-    }
-  }
-}
-global.timeAgo = timeAgo")
 (defn story-item-widget
-  [{:keys [short_id title url score created_at comment_count comments_url tags] :as story
+  [{:keys [title url score created_at comment_count tags] :as story
     {:keys [username]} :submitter_user}]
   [Gtk/Box
    :orientation Gtk/Orientation.HORIZONTAL
@@ -65,19 +38,15 @@ global.timeAgo = timeAgo")
          [Gtk/LinkButton
           :css_classes #js ["small" "button" "flat" "caption"]
           :halign Gtk/Align.START
-          :uri (str "https://lobste.rs/domain/" host) #_("Meh, not sure about this")
+          :uri (lobster/rel "domain/" host)
           :label host])
        :.append
        (for [t tags]
          [Gtk/Button
-          :$clicked #(reset! curr-view {:name :tag
-                                        :tag t
-                                        :header-start back-to-home-btn
-                                        :prev-state @curr-view
-                                        :page 1})
+          :$clicked #(state/send [:push-tagged-stories t])
           :label t
           :valign Gtk/Align.CENTER
-          :css_classes #js ["small" "button" "flat" "tag" "caption"]])]
+          :.add_css_class (list "small" "flat" "tag" "caption")])]
       [Gtk/Box
        :spacing 2
        :halign Gtk/Align.START
@@ -88,14 +57,11 @@ global.timeAgo = timeAgo")
          :label username
          :css_classes #js ["small" "button" "flat" "body"]]
         [Gtk/Label
-         :label (js/global.timeAgo created_at)])])]
+         :label (time-ago created_at)])])]
     [Gtk/Button
      :valign Gtk/Align.CENTER
      :css_classes #js ["button" "flat"]
-     :$clicked #(reset! curr-view {:name :comments
-                                   :story story
-                                   :header-start back-to-home-btn
-                                   :prev-state @curr-view})
+     :$clicked #(state/send [:push-story story])
      :child
      [Gtk/Overlay
       :child
@@ -104,81 +70,75 @@ global.timeAgo = timeAgo")
                      :css_classes #js ["caption-heading" "numeric"]
                      :label (str comment_count)]]])])
 
-(declare top-bar)
-(defc top-bar []
-  [Gtk/ScrolledWindow
-   :propagate_natural_width true
-   :halign Gtk/Align.CENTER
-   :child
-   [Gtk/Box
-    :valign Gtk/Align.CENTER
-    :spacing 8
-    :.append
-    (list
-     [Gtk/ToggleButton
-      :label "Hottest"
-      :active (= :hottest (:stories-kw @curr-view))
-      :.add_css_class (list "small" "flat")
-      :$clicked #(reset! curr-view (state/init-stories :hottest))]
-     [Gtk/ToggleButton
-      :label "Active"
-      :active (= :active (:stories-kw @curr-view))
-      :.add_css_class (list "small" "flat")
-      :$clicked #(reset! curr-view (state/init-stories :active))]
-     ;; /recent.json currently returns status 500
-     ;; See https://github.com/lobsters/lobsters/issues/1114
-     #_[Gtk/Button
-        :label "Recent"
-        :.add_css_class (list "small" "flat")
-        :$clicked #(reset! curr-view (state/init-stories :recent))]
-     ;; /search.json currently returns status 500
-     ;; See https://github.com/lobsters/lobsters/issues/1115
-     #_[Gtk/Button
-        :label "Search"
-        :.add_css_class (list "small" "flat")
-        :$clicked #(reset! curr-view {:name :search})])]])
+(defn stories-list-view [provider]
+  (let [page (atom 1)]
+    [Gtk/ScrolledWindow
+     :.add_css_class "background"
+     :propagate_natural_height true
+     :hscrollbar_policy Gtk/PolicyType.NEVER
+     :child
+     [Adw/Clamp
+      :child
+      [Gtk/Box
+       :orientation Gtk/Orientation.VERTICAL
+       :margin-top 8
+       :margin-bottom 24
+       :margin-start 8
+       :margin-end 8
+       :spacing 8
+       :.append
+       [Adw/Bin
+        :child
+        (derived-atom
+         [page]
+         :stories
+         (fn [p]
+           [Adw/Bin ;; quickly swaps the widget when the atom changes
+            :height-request 48
+            :child
+            (-> (provider :page p) ;; load the data and display the new listbox
+                (.then
+                 #(if (> (count %) 0)
+                    [Gtk/ListBox
+                     :.add_css_class "boxed-list"
+                     :.append
+                     (map story-item-widget %)]
+                    [Adw/StatusPage
+                     :icon_name "mail-read-symbolic"
+                     :title
+                     "No Stories Available"])))]))]
+       :.append
+       [Gtk/Box
+        :hexpand true
+        :homogeneous true
+        :.append
+        [Gtk/Button
+         :halign Gtk/Align.START
+         :label "Previous"
+         :sensitive (derived-atom [page] :prev-story-page #(> % 1))
+         :$clicked #(swap! page dec)]
+        :.append
+        [Gtk/Label
+         :label
+         (derived-atom [page] :stories-page-label #(str "Page " %))]
+        :.append
+        [Gtk/Button
+         :halign Gtk/Align.END
+         :label "Next"
+         :$clicked #(swap! page inc)]]]]]))
 
-(defn stories-widget-provider [prom]
-  (-> prom
-      (.then (partial map story-item-widget))
-      (.catch println)))
-
-(defn stories-list-view [top-bar prom]
-  [Gtk/ScrolledWindow
-   :propagate_natural_height true
-   :child
-   [Adw/Clamp
-    :child
+(defn home-stories []
+  (let [stack (doto (Gtk/Stack.)
+                (.add_titled
+                 (build-ui (stories-list-view lobster/hottest))
+                 "hottest" "Hottest")
+                (.add_titled
+                 (build-ui (stories-list-view lobster/active))
+                 "active" "Active"))]
+    (swap! state/global-widgets assoc :home-stories stack)
     [Gtk/Box
+     ::rollui/ref-in [global-widgets :home]
      :orientation Gtk/Orientation.VERTICAL
-     :margin-top 8
-     :margin-bottom 24
-     :margin-start 8
-     :margin-end 8
-     :spacing 8
      :.append
-     (if (nil? top-bar)
-       ::rollui/abort
-       (top-bar))
-     :.append
-     [Gtk/ListBox
-      :css_classes #js ["boxed-list"]
-      :.append (stories-widget-provider prom)]
-     :.append
-     [Gtk/Box
-      :hexpand true
-      :homogeneous true
-      :.append
-      [Gtk/Button
-       :halign Gtk/Align.START
-       :label "Previous"
-       :sensitive (> (:page @curr-view) 1)
-       :$clicked #(swap! curr-view update :page dec)]
-      :.append
-      [Gtk/Label :label (str "Page " (:page @curr-view))]
-      :.append
-      [Gtk/Button
-       :halign Gtk/Align.END
-       :label "Next"
-       :$clicked #(swap! curr-view update :page inc)]]]]])
+     stack]))
 

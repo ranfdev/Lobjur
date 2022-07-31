@@ -1,0 +1,27 @@
+{
+    "app-id" : "com.ranfdev.Lobjur",
+    "runtime" : "org.gnome.Platform",
+    "runtime-version" : "42",
+    "sdk" : "org.gnome.Sdk",
+    "command" : "lobjur",
+    "finish-args" : [
+        "--share=ipc",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--share=network",
+    ],
+    "modules" : [
+        {
+            "name" : "Lobjur",
+            "buildsystem" : "custom",
+            "sources" : [
+                {
+                    "type" : "git",
+                    "url" : "../",
+                    "branch": "master"
+                }
+            ]
+        }
+    ]
+}

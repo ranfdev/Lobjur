@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lorenzo Miglietta 2022 <ranfdev@gmail.com> -->
+<component type="desktop-application">
+  <id>com.ranfdev.Lobjur</id>
+  <metadata_license>CC0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <name>Lobjur</name>
+  <summary>A simple lobste.rs client</summary>
+  <description>
+    <p>This application lets you browse https://lobste.rs/. "Lobsters is a computing-focused community centered around link aggregation and discussion, launched on July 3rd, 2012".</p>
+  </description>
+
+  <screenshots>
+    <screenshot type="default" height="752" width="442">
+      <image></image>
+    </screenshot>
+    <screenshot height="752" width="442">
+      <image></image>
+    </screenshot>
+    <screenshot height="844" width="835">
+      <image></image>
+    </screenshot>
+  </screenshots>
+
+
+
+  <url type="homepage">https://github.com/ranfdev/Lobjur</url>
+  <url type="bugtracker">https://github.com/ranfdev/Lobjur/issues/</url>
+  <content_rating type="oars-1.0" />
+
+  <releases>
+    <release version="1.0.0" date="2022-07-31">
+      <description>
+				<p>First release</p>
+      </description>
+    </release>
+  </releases>
+
+  <requires>
+    <display_length compare="ge">270</display_length>
+  </requires>
+  <custom>
+    <value key="Purism::form_factor">mobile</value>
+  </custom>
+
+
+  <developer_name>Lorenzo Miglietta</developer_name>
+  <update_contact>ranfdev+apps@gmail.com</update_contact>
+  <launchable type="desktop-id">com.ranfdev.Lobjur.desktop</launchable>
+</component>

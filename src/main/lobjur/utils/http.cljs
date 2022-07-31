@@ -8,7 +8,7 @@
 (js* "~{}._promisify(~{}.Session.prototype, 'send_and_read_async', 'send_and_read_finish')", Gio, Soup)
 
 (def session (new Soup/Session #js {:user-agent "lobjur"}))
-(defn get [url & {:as options}]
+(defn get-raw [url & {:as options}]
   (-> (.send_and_read_async
        session
        (if (:params options)
@@ -22,7 +22,9 @@
                                          (:params options))))))
          (Soup/Message.new "GET", url))
        0
-       nil)
+       nil)))
+(defn get [url & {:as options}]
+  (-> (get-raw url options)
       (.then (comp
               ByteArray/toString
               ByteArray/fromGBytes))))

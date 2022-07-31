@@ -1,9 +1,25 @@
 (ns lobjur.state)
 
+(def global-widgets (atom {}))
 
-(defn init-stories [kw]
-  {:name :stories :stories-kw kw :page 1})
-(defonce curr-view (atom (init-stories :hottest)))
+(def transducers (atom []))
+(defn add-transducer [r]
+  (swap! transducers conj r))
 
-;; To test a comment-heavy story, open a story, then evaluate this line
-;; (swap! curr-view assoc-in [:story :short_id] "jclvos")
+(def state (atom nil))
+(defn reduce-state [state action]
+  (transduce
+   (apply comp @transducers)
+   (fn [state _] state)
+   state
+   [action]))
+
+(defn send [action]
+  (reset! state (reduce-state @state action)))
+
+; # REPL helpers
+; (:prev-state @state)
+; (send [:pop-main-stack])
+; To test a comment-heavy story, open a story, then evaluate this line
+; (-> (lobster/story "jclvos")
+;    (.then #(send [:push-story %])))

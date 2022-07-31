@@ -1,17 +1,14 @@
 (ns lobjur.widgets.comments
   (:require
-   [shadow.cljs.modern :refer-macros [defclass]]
-   [lobjur.state :refer [curr-view]]
-   [rollui.core :as rollui]
-   [lobjur.utils.http :as http]
-   [lobjur.utils.common :refer [parse-json]]
-   [lobster.core :as lobster]
-   [lobjur.widgets.shared :refer [upvote-btn back-to-home-btn]]
-   ["gjs.gi.GLib" :as GLib]
-   ["gjs.gi.Gio" :as Gio]
-   ["gjs.gi.Pango" :as Pango]
    ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.Gtk" :as Gtk]))
+   ["gjs.gi.Gio" :as Gio]
+   ["gjs.gi.GLib" :as GLib]
+   ["gjs.gi.Gtk" :as Gtk]
+   ["gjs.gi.Pango" :as Pango]
+   [lobjur.state :as state]
+   [lobjur.widgets.shared :refer [time-ago upvote-btn]]
+   [lobster.core :as lobster]
+   [rollui.core :as rollui]))
 
 (defn comment-widget [refs]
   [Gtk/Box
@@ -25,7 +22,10 @@
      [Gtk/Button
       ::rollui/ref-in [refs :user-btn]
       :halign Gtk/Align.START
-      :css_classes #js ["small" "button" "flat" "heading"]]]
+      :css_classes #js ["small" "button" "flat" "heading"]]
+     :.append
+     [Gtk/Label
+      ::rollui/ref-in [refs :time-ago]]]
 
     [Gtk/Label
      ::rollui/ref-in [refs :label]
@@ -35,27 +35,25 @@
      :margin-start 8
      :margin-end 8
      :margin-bottom 8
-     :xalign 0.0]
-    [Gtk/Box
-     :spacing 8
-     :margin-start 8
-     :orientation Gtk/Orientation.VERTICAL])])
+     :xalign 0.0])])
 
 (defn list-setup [_ ^js item]
+  (.set_activatable item false)
   (.set_child item (rollui/RefsWidget comment-widget)))
 (defn list-bind [_ ^js item]
   (let [data (.-data (.get_item item))
-        {:keys [comment_plain indent_level]
+        {:keys [comment_plain indent_level created_at]
          {:keys [username]} :commenting_user} data
         child (.get_child item)
-        refs @(.-refs child)]
-    (.set_margin_start (:box refs) (* 4 indent_level))
-    (.connect (:user-btn refs) "clicked"
-              #(reset! curr-view {:name :user :username username
-                                  :header-start back-to-home-btn
-                                  :prev-state @curr-view}))
-    (.set_label (:user-btn refs) username)
-    (.set_label (:label refs) comment_plain)))
+        refs ^js @(.-refs child)]
+    (.set_margin_start ^js (:box refs) (* 4 indent_level))
+    (doto ^js (:user-btn refs)
+      (.set_label username)
+      (.connect "clicked"
+                #(state/send [:push-user username])))
+    (.set_label ^js (:time-ago refs) (time-ago created_at))
+    (.set_label ^js (:label refs) comment_plain)))
+
 (defn comments-list-view [comments]
   (let [store (Gio/ListStore. (.-$gtype rollui/DataObject))
         _ (doseq [c comments]
@@ -70,6 +68,8 @@
 
 (defn comments-view [{:keys [title url score tags short_id]}]
   [Adw/Clamp
+   :hexpand true
+   :.add_css_class "background"
    :child
    [Gtk/Box
     :orientation Gtk/Orientation.VERTICAL
@@ -92,19 +92,21 @@
     [Gtk/Box
      :spacing 8
      :.append
-     (let [host (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
+     (let [host
+           ; maybe I should get only the base domain...
+           (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
        [Gtk/LinkButton
         :css_classes #js ["small" "button" "flat" "caption"]
         :halign Gtk/Align.START
-        :uri (str "https://lobste.rs/domain/" host) #_("Meh, not sure about this")
+        :uri (lobster/rel "domain/" host)
         :label host])
      :.append
      (for [t tags]
-       [Gtk/LinkButton
-        :uri (str "https://lobste.rs/t/" t)
+       [Gtk/Button
         :label t
         :valign Gtk/Align.CENTER
-        :css_classes #js ["small" "button" "flat" "tag" "caption"]])]
+        :$clicked #(state/send [:push-tagged-stories t])
+        :.add_css_class (list "small" "flat" "tag" "caption")])]
     :.append
     (-> (lobster/story short_id)
         (.then
