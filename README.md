@@ -43,3 +43,16 @@ Once the app is running, you can also inspect its internal state with a REPL, us
 npx shadow-cljs cljs-repl app
 ```
 
+## Release
+
+For who mantains the app.
+
+- Create a dist folder using
+
+```sh
+./build-aux/make-dist.sh
+```
+
+- Upload the dist archive as a github release. 
+- Wait for the flathub build bot to create an update.
+

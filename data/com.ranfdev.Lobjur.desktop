@@ -7,5 +7,5 @@ Terminal=false
 Categories=GNOME;GTK;Network;
 Keywords=Gnome;GTK;browser;lobsters;social;forum;
 # Translators: Do NOT translate or transliterate this text (this is an icon file name)!
-Icon=data/icons/hicolor/scalable/apps/com.ranfdev.Lobjur.svg
+Icon=com.ranfdev.Lobjur
 StartupNotify=true

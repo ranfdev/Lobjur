@@ -9,17 +9,24 @@
         "--socket=fallback-x11",
         "--socket=wayland",
         "--device=dri",
-        "--share=network",
+        "--share=network"
     ],
     "modules" : [
         {
             "name" : "Lobjur",
-            "buildsystem" : "custom",
+            "buildsystem" : "simple",
+            "build-commands": [
+                "install -D app.js /app/bin/lobjur",
+                "cp -r jslibs /app/bin/jslibs",
+                "mkdir -p /app/share/",
+                "cp -r data/icons /app/share/icons/",
+                "install -D data/com.ranfdev.Lobjur.desktop /app/share/applications/com.ranfdev.Lobjur.desktop",
+                "install -D data/com.ranfdev.Lobjur.metainfo.xml /app/share/metainfo/com.ranfdev.Lobjur.metainfo.xml"
+            ],
             "sources" : [
                 {
-                    "type" : "git",
-                    "url" : "../",
-                    "branch": "master"
+                    "type" : "dir",
+                    "path" : "./build"
                 }
             ]
         }

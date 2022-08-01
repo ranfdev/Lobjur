@@ -4,5 +4,4 @@
  {:app {:target shadow-cljs-gjs-target.core
         :output-dir "./build/jslibs"
         :output-to "./build/app.js"
-        :compiler-options {:infer-externs :auto}
         :main lobjur.main/main}}}
