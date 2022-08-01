@@ -7,14 +7,12 @@
   <name>Lobjur</name>
   <summary>A simple lobste.rs client</summary>
   <description>
-    <p>This application lets you browse https://lobste.rs/. "Lobsters is a computing-focused community centered around link aggregation and discussion, launched on July 3rd, 2012".</p>
+    <p>Simple client for lobste.rs online community. From the website: "Lobsters is a computing-focused community centered around link aggregation and discussion, launched on July 3rd, 2012".</p>
   </description>
 
   <screenshots>
     <screenshot type="default" height="842" width="842">
-      <image>
-      https://user-images.githubusercontent.com/23294184/182030992-7b95dcf3-3428-4eb3-b9fa-38413cbde99b.png
-      </image>
+      <image>https://raw.githubusercontent.com/ranfdev/Lobjur/master/data/screenshots/1.png</image>
     </screenshot>
   </screenshots>
 
