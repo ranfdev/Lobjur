@@ -1,6 +1,8 @@
 (ns lobjur.widgets.shared
   (:require
-   ["gjs.gi.Gtk" :as Gtk]))
+   ["gjs.gi.Gtk" :as Gtk]
+   [clojure.core.async :as async]
+   [rollui.core :as rollui]))
 
 (defn upvote-btn [score]
   [Gtk/Box
@@ -35,3 +37,45 @@
   }
 }
 "))
+
+(def swr-cache (atom {}))
+(defn -swr-mutate [k f refresh-interval]
+  (when-let [timer (get-in @swr-cache [k :timer])]
+    (js/clearTimeout timer))
+
+  (swap! swr-cache assoc k {:promise (f)
+                            :timer
+                            (when-let [t refresh-interval]
+                              (js/setTimeout f t))}))
+
+(defn swr
+  "Inspired by https://swr.vercel.app/.
+  May break when two components use the same key."
+  [k f & opts]
+  (let [responses (async/chan 1)
+        mutate! #(-swr-mutate
+                  k f
+                  (:refresh-interval opts))]
+    (add-watch swr-cache (keyword (str k "__swr"))
+               (fn [_ _ _ latest-cache]
+                 (when-let [prom ^js (get-in latest-cache [k :promise])]
+                   (-> prom
+                       (.then
+                        (fn [data]
+                          (set! (.-ready prom) true)
+                          (async/put! responses {:data data :error nil})))
+                       (.catch
+                        (fn [err]
+                          (async/put! responses {:data nil :error err})))))))
+
+    (if-let [prom (get-in @swr-cache [k :promise])]
+      (if (not (.-ready prom))
+        (async/put! responses {:data nil :error nil})
+        (-> prom
+            (.then #(async/put! responses {:data % :error nil}))
+            (.catch #(async/put! responses {:data nil :error %}))))
+      (do
+        (async/put! responses {:data nil :error nil})
+        (swap! swr-cache assoc k {:promise (f)})))
+    {:responses responses
+     :mutate mutate!}))

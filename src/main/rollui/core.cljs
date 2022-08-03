@@ -1,4 +1,7 @@
-(ns rollui.core)
+(ns rollui.core
+  (:require
+   [clojure.core.async :as async]
+   [clojure.core.async.impl.protocols :refer [Channel]]))
 
 (declare build-widget)
 (defn build-property [p]
@@ -23,6 +26,11 @@
     (-> vs
         (.then (partial update-prop-many w k))
         (.catch (partial println "Error in promise, in update-prop-many")))
+    (satisfies? Channel vs)
+    (async/go-loop []
+      (when-some [v (async/<! vs)]
+        (update-prop-many w k v)
+        (recur)))
     (and (satisfies? ISeq vs) (not (vector? vs)))
     (doseq [v vs]
       (update-prop-many w k v))
@@ -100,7 +108,7 @@
 })()
     "))
 
-(defn ^js RefsWidget 
+(defn ^js RefsWidget
   "Takes a rollui widget (view), returns a GtkWidget with the specified view rendered into it.
   The rollui widget is able to save references to the internal sub-widgets. The returned
   GtkWidget will store those references so that they can be used later.

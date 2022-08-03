@@ -3,8 +3,9 @@
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gtk" :as Gtk]
+   [clojure.core.async :as async]
    [lobjur.state :as state :refer [global-widgets]]
-   [lobjur.widgets.shared :refer [upvote-btn time-ago]]
+   [lobjur.widgets.shared :refer [swr time-ago upvote-btn]]
    [lobster.core :as lobster]
    [rollui.core :as rollui :refer [build-ui derived-atom]]))
 
@@ -71,8 +72,20 @@
                      :label (str comment_count)]]])])
 
 (defn stories-list-view [provider]
-  (let [page (atom 1)]
+  (let [list-id (gensym)
+        refs (atom {})
+        page (atom 1)
+        stories (async/chan 1)
+        stories-mix (async/mix stories)
+        mix-fn (fn [_ _ _ p]
+                 (async/unmix-all stories-mix)
+                 (async/admix stories-mix
+                              (:responses (swr (str list-id p) #(provider :page p)))))]
+    (mix-fn nil nil nil @page)
+    (add-watch page nil mix-fn)
+
     [Gtk/ScrolledWindow
+     ::rollui/ref-in [refs :scrolled-win]
      :.add_css_class "background"
      :propagate_natural_height true
      :hscrollbar_policy Gtk/PolicyType.NEVER
@@ -89,24 +102,37 @@
        :.append
        [Adw/Bin
         :child
-        (derived-atom
-         [page]
-         :stories
-         (fn [p]
-           [Adw/Bin ;; quickly swaps the widget when the atom changes
-            :height-request 48
-            :child
-            (-> (provider :page p) ;; load the data and display the new listbox
-                (.then
-                 #(if (> (count %) 0)
-                    [Gtk/ListBox
-                     :.add_css_class "boxed-list"
-                     :.append
-                     (map story-item-widget %)]
-                    [Adw/StatusPage
-                     :icon_name "mail-read-symbolic"
-                     :title
-                     "No Stories Available"])))]))]
+        (async/map
+         (fn [{:keys [data error]}]
+           ;; Schedule a "return to top" after the UI update.
+           ;; Doing it during the UI update isn't reliable
+           (GLib/idle_add
+            GLib/PRIORITY_LOW
+            #(.. (:scrolled-win @refs)
+                 (get_vadjustment)
+                 (set_value 0)))
+           (cond
+             (and (nil? data) (nil? error))
+             [Gtk/Spinner
+              :spinning true]
+
+             (some? error)
+             [Adw/StatusPage
+              :icon-name "dialog-error-symbolic"
+              :title "Error loading stories"
+              :description (str error)]
+
+             (> (count data) 0)
+             [Gtk/ListBox
+              :.add_css_class "boxed-list"
+              :.append
+              (map story-item-widget data)]
+
+             :else
+             [Adw/StatusPage
+              :icon_name "mail-read-symbolic"
+              :title
+              "No Stories Available"])) [stories])]
        :.append
        [Gtk/Box
         :hexpand true
