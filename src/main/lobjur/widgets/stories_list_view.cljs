@@ -52,8 +52,8 @@
        :halign Gtk/Align.START
        :.append
        (list
-        [Gtk/LinkButton
-         :uri (str "https://lobste.rs/u/" username)
+        [Gtk/Button
+         :$clicked #(state/send [:push-user username])
          :label username
          :css_classes #js ["small" "button" "flat" "body"]]
         [Gtk/Label
