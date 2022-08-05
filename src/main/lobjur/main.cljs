@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
-   [lobjur.widgets.stories-list-view :as stories-list-view :refer [home-stories]]
+   [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
    [lobster.core :as lobster]
@@ -25,6 +25,11 @@
     (-> s
         (assoc :prev-state s)
         (assoc :curr-view v))))
+(defn push-titled-view [s view title]
+  (-> s
+      (push-view view)
+      (assoc :header-start back-btn)
+      (assoc :title-widget [Gtk/Label :label title])))
 (defn app-transducer [f]
   (fn
     ([s] s)
@@ -37,26 +42,21 @@
                       [Gtk/StackSwitcher
                        :stack (:home-stories @state/global-widgets)]))
            :push-user
-           (-> state
-               (push-view (user/user-view payload))
-               (assoc :header-start back-btn)
-               (assoc :title-widget [Gtk/Label :label payload]))
+           (push-titled-view state (user/user-view payload) payload)
            :push-user-stories
-           (-> state
-               (push-view
-                (stories-list-view/stories-list-view (partial lobster/user-stories-newest payload)))
-               (assoc :header-start back-btn)
-               (assoc :title-widget [Gtk/Label :label payload]))
+           (push-titled-view state
+                             (stories-list-view (partial lobster/user-stories-newest payload))
+                             payload)
+           :push-domain-stories
+           (push-titled-view state
+                             (stories-list-view (partial lobster/domain-stories payload))
+                             payload)
            :push-story
-           (-> state
-               (push-view (comments/comments-view payload))
-               (assoc :title-widget [Gtk/Label :label "Comments"])
-               (assoc :header-start back-btn))
+           (push-titled-view state (comments/comments-view payload) "Comments")
            :push-tagged-stories
-           (-> state
-               (push-view (stories-list-view/stories-list-view (partial lobster/tagged payload)))
-               (assoc :title-widget [Gtk/Label :label payload])
-               (assoc :header-start back-btn))
+           (push-titled-view state
+                             (stories-list-view (partial lobster/tagged payload))
+                             payload)
            :pop-main-stack
            (do
              (doto ^js (:main-stack @state/global-widgets)

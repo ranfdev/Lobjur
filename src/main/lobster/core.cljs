@@ -41,3 +41,8 @@
   (.then
    (http/get (rel "newest/" (str username ".json")) {:params params})
    parse-json))
+
+(defn domain-stories [domain & {:as params}]
+  (.then
+   (http/get (rel "domain/" (str domain ".json")) {:params params})
+   parse-json))

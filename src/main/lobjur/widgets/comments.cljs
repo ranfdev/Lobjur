@@ -95,10 +95,10 @@
      (let [host
            ; maybe I should get only the base domain...
            (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
-       [Gtk/LinkButton
-        :css_classes #js ["small" "button" "flat" "caption"]
+       [Gtk/Button
+        :.add_css_class (list "small" "button" "flat" "caption")
         :halign Gtk/Align.START
-        :uri (lobster/rel "domain/" host)
+        :$clicked #(state/send [:push-domain-stories host])
         :label host])
      :.append
      (for [t tags]
