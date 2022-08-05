@@ -2,6 +2,8 @@
 
 This a native https://lobste.rs client written using GTK4, libadwaita and ClojureScript (gjs runtime, custom target). 
 
+<a href='https://flathub.org/apps/details/com.ranfdev.Lobjur'><img width='240' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.png'/></a>
+
 ## Screenshot
 ![Screenshot from 2022-07-31 16-21-12](https://user-images.githubusercontent.com/23294184/182030992-7b95dcf3-3428-4eb3-b9fa-38413cbde99b.png)
 
