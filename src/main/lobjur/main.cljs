@@ -22,11 +22,12 @@
     (doto ^js (:main-stack @state/global-widgets)
       (.add_child v)
       (.set_visible_child v))
-    (-> s
-        (assoc :header-start nil)
-        (assoc :header-end nil)
-        (assoc :prev-state s)
-        (assoc :curr-view v))))
+    (merge s
+           {:header-start nil
+            :header-end nil
+            :prev-state s
+            :curr-view v})))
+
 (defn push-titled-view [s view title]
   (-> s
       (push-view view)
@@ -66,16 +67,15 @@
                              (stories-list-view (partial lobster/tagged payload))
                              payload)
            :pop-main-stack
-           (do
+           (let [prev-state (:prev-state state)]
              (doto ^js (:main-stack @state/global-widgets)
-               (.set_visible_child (:curr-view (:prev-state state)))
+               (.set_visible_child (:curr-view prev-state))
                (.remove (:curr-view state)))
-             (-> state
-                 (assoc :prev-state (get-in state [:prev-state :prev-state]))
-                 (assoc :curr-view (:curr-view (:prev-state state)))
-                 (assoc :title-widget (:title-widget (:prev-state state)))
-                 (assoc :header-start (get-in state [:prev-state :header-start]))
-                 (assoc :header-end (get-in state [:prev-state :header-end])))))
+             (merge state
+                    ;; Reset these keys to the ones in the previous state
+                    (select-keys
+                     prev-state
+                     [:prev-state :curr-view :title-widget :header-start :header-end]))))
 
          (f action)))))
 (state/add-transducer app-transducer)
