@@ -23,6 +23,8 @@
       (.add_child v)
       (.set_visible_child v))
     (-> s
+        (assoc :header-start nil)
+        (assoc :header-end nil)
         (assoc :prev-state s)
         (assoc :curr-view v))))
 (defn push-titled-view [s view title]
@@ -52,7 +54,13 @@
                              (stories-list-view (partial lobster/domain-stories payload))
                              payload)
            :push-story
-           (push-titled-view state (comments/comments-view payload) "Comments")
+           (-> state
+               (push-titled-view (comments/comments-view payload) "Comments")
+               (assoc :header-end
+                      [Gtk/LinkButton
+                       :uri (lobster/rel "s/" (:short_id payload))
+                       :icon-name "web-browser-symbolic"
+                       :css_classes #js ["image-button"]]))
            :push-tagged-stories
            (push-titled-view state
                              (stories-list-view (partial lobster/tagged payload))
@@ -66,7 +74,9 @@
                  (assoc :prev-state (get-in state [:prev-state :prev-state]))
                  (assoc :curr-view (:curr-view (:prev-state state)))
                  (assoc :title-widget (:title-widget (:prev-state state)))
-                 (assoc :header-start (if (get-in state [:prev-state :prev-state]) back-btn nil)))))
+                 (assoc :header-start (get-in state [:prev-state :header-start]))
+                 (assoc :header-end (get-in state [:prev-state :header-end])))))
+
          (f action)))))
 (state/add-transducer app-transducer)
 

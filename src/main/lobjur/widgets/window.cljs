@@ -7,11 +7,16 @@
 
 (declare header-bar)
 (defc header-bar []
-  (let [header-start (derived-atom [state/state] :header-start #(get % :header-start nil))]
-    [Adw/HeaderBar
-     :.pack_start [Adw/Bin :child header-start]
-     :title_widget (derived-atom
-                    [state/state] :title-widget #(get % :title-widget nil))]))
+
+  [Adw/HeaderBar
+   :.pack_start [Adw/Bin :child
+                 (derived-atom [state/state]
+                               :header-start #(get % :header-start nil))]
+   :.pack_end [Adw/Bin :child
+                 (derived-atom [state/state]
+                               :header-end #(get % :header-end nil))]
+   :title_widget (derived-atom
+                  [state/state] :title-widget #(get % :title-widget nil))])
 
 (defn window-content []
   [Gtk/Box
