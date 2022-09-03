@@ -4,8 +4,7 @@
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.Gdk" :as Gdk]
    ["gjs.gi.Gtk" :as Gtk]
-   ["gjs.gi.GLib" :as GLib]
-   [clojure.string :as str]
+   ["gjs.gi.Gio" :as Gio]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
@@ -42,6 +41,11 @@
            :init
            (-> state
                (push-view (home-stories))
+               (assoc :header-end [Gtk/MenuButton
+                                   :icon-name "open-menu-symbolic"
+                                   :menu-model (doto (Gio/Menu.)
+                                                 (.append "About" "win.about")
+                                                 (.append "Donate" "win.donate"))])
                (assoc :title-widget
                       [Adw/ViewSwitcher
                        :policy Adw/ViewSwitcherPolicy.WIDE
@@ -109,6 +113,21 @@
   }
   ")
 
+(defn about []
+  (.present (build-ui
+             [Gtk/AboutDialog.
+              :license "
+                       This program comes with absolutely no warranty.
+                       See the <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">GNU General Public License, version 3 or later</a> for details."
+              :license-type Gtk/License.GPL_3_0
+              :program-name "Lobjur"
+              :authors #js ["ranfdev https://ranfdev.com/about"]
+              :version "1.1.0"
+              :comments "A simple https://lobste.rs client"
+              :logo-icon-name "com.ranfdev.Lobjur"
+              :website-label "Source"
+              :website "https://github.com/ranfdev/Lobjur"])))
+
 (defn activate [app]
   (let [win (Adw/ApplicationWindow.
              #js
@@ -117,6 +136,12 @@
                :default_height 720
                :content
                (build-ui (window-content))})]
+    (doto win
+      (.present)
+      (.add_action (doto (Gio/SimpleAction. #js {:name "about"})
+                     (.connect "activate" #(about))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "donate"})
+                     (.connect "activate" #(Gtk/show_uri nil "https://github.com/sponsors/ranfdev" 0)))))
     (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
