@@ -13,8 +13,8 @@
                  (derived-atom [state/state]
                                :header-start #(get % :header-start nil))]
    :.pack_end [Adw/Bin :child
-                 (derived-atom [state/state]
-                               :header-end #(get % :header-end nil))]
+               (derived-atom [state/state]
+                             :header-end #(get % :header-end nil))]
    :title_widget (derived-atom
                   [state/state] :title-widget #(get % :title-widget nil))])
 

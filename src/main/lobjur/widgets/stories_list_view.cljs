@@ -128,13 +128,16 @@
          :$clicked #(swap! page inc)]]]]]))
 
 (defn home-stories []
-  (let [stack (doto (Gtk/Stack.)
-                (.add_titled
-                 (build-ui (stories-list-view lobster/hottest))
-                 "hottest" "Hottest")
-                (.add_titled
-                 (build-ui (stories-list-view lobster/active))
-                 "active" "Active"))]
+  (let [stack (Adw/ViewStack.)]
+    (doto (.add_titled stack
+                       (build-ui (stories-list-view lobster/hottest))
+                       "hottest"
+                       "Hottest")
+      (.set_icon_name "power-profile-performance-symbolic"))
+    (doto (.add_titled stack
+                       (build-ui (stories-list-view lobster/active))
+                       "active" "Active")
+      (.set_icon_name "audio-speakers-symbolic"))
     (swap! state/global-widgets assoc :home-stories stack)
     [Gtk/Box
      ::rollui/ref-in [global-widgets :home]

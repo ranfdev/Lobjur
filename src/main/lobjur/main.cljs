@@ -4,6 +4,7 @@
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.Gdk" :as Gdk]
    ["gjs.gi.Gtk" :as Gtk]
+   ["gjs.gi.GLib" :as GLib]
    [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
@@ -42,7 +43,8 @@
            (-> state
                (push-view (home-stories))
                (assoc :title-widget
-                      [Gtk/StackSwitcher
+                      [Adw/ViewSwitcher
+                       :policy Adw/ViewSwitcherPolicy.WIDE
                        :stack (:home-stories @state/global-widgets)]))
            :push-user
            (push-titled-view state (user/user-view payload) payload)
@@ -108,22 +110,21 @@
   ")
 
 (defn activate [app]
-  (doto (Adw/ApplicationWindow.
-         #js
-          {:application app
-           :default_width 720
-           :default_height 720
-           :content
-           (build-ui (window-content))})
-    (.present))
+  (let [win (Adw/ApplicationWindow.
+             #js
+              {:application app
+               :default_width 720
+               :default_height 720
+               :content
+               (build-ui (window-content))})]
+    (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
    (doto (new Gtk/CssProvider) (.load_from_data (ByteArray/fromString app-css)))
    600)
   (state/send [:init]))
 
-(defn ^:export main [& args]
-  (println "Command line arguments are: " (str/join ", " args))
+(defn ^:export main [& _args]
   (doto (Adw/Application. #js {:application_id "com.ranfdev.Lobjur"})
     (.connect "activate" activate)
     (.run #js [])))
