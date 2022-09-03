@@ -122,7 +122,7 @@
               :license-type Gtk/License.GPL_3_0
               :program-name "Lobjur"
               :authors #js ["ranfdev https://ranfdev.com/about"]
-              :version "1.1.0"
+              :version "1.2.0"
               :comments "A simple https://lobste.rs client"
               :logo-icon-name "com.ranfdev.Lobjur"
               :website-label "Source"
