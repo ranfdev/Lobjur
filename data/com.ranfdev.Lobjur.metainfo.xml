@@ -12,7 +12,7 @@
 
   <screenshots>
     <screenshot type="default" height="842" width="842">
-      <image>https://raw.githubusercontent.com/ranfdev/Lobjur/master/data/screenshots/1.png</image>
+      <image>https://user-images.githubusercontent.com/23294184/188264118-76c8df44-10a4-4894-902e-66a006037d7f.png</image>
     </screenshot>
   </screenshots>
 
@@ -20,9 +20,20 @@
 
   <url type="homepage">https://github.com/ranfdev/Lobjur</url>
   <url type="bugtracker">https://github.com/ranfdev/Lobjur/issues/</url>
+  <url type="donation">https://github.com/sponsors/ranfdev</url>
   <content_rating type="oars-1.0" />
 
   <releases>
+    <release version="1.2.0" date="2022-09-03">
+      <description>
+        <p>Changes</p>
+        <ul>
+          <li>Improved view switcher on the home page</li>
+          <li>Added main menu in the headerbar</li>
+          <li>Added About page</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2022-08-05">
       <description>
         <p>Changes</p>
