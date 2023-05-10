@@ -17,7 +17,7 @@ This a native https://lobste.rs client written using GTK4, libadwaita and Clojur
 - Browse stories by tag
 - Lookup user info
 
-## Developement
+## Development
 
 ClojureScript requires a decent amount of dependencies for compilation; they are listed in the file `flake.nix`.
 
