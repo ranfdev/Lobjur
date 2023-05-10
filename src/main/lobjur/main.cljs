@@ -145,7 +145,7 @@
     (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
-   (doto (new Gtk/CssProvider) (.load_from_data (ByteArray/fromString app-css)))
+   (doto (new Gtk/CssProvider) (.load_from_data app-css -1))
    600)
   (state/send [:init]))
 
