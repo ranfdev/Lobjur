@@ -115,16 +115,16 @@
 
 (defn about []
   (.present (build-ui
-             [Gtk/AboutDialog.
+             [Adw/AboutWindow
               :license "
                        This program comes with absolutely no warranty.
                        See the <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">GNU General Public License, version 3 or later</a> for details."
-              :license-type Gtk/License.GPL_3_0
-              :program-name "Lobjur"
+              :application-name "Lobjur"
+              :application-icon "com.ranfdev.Lobjur"
               :authors #js ["ranfdev https://ranfdev.com/about"]
-              :version "1.2.0"
+              :version "1.3.0"
               :comments "A simple https://lobste.rs client"
-              :logo-icon-name "com.ranfdev.Lobjur"
+              :license-type Gtk/License.GPL_3_0
               :website-label "Source"
               :website "https://github.com/ranfdev/Lobjur"])))
 
