@@ -60,7 +60,7 @@
   </releases>
 
   <requires>
-    <display_length compare="ge">270</display_length>
+    <display_length compare="ge">360</display_length>
   </requires>
   <custom>
     <value key="Purism::form_factor">mobile</value>
