@@ -21,11 +21,11 @@ LAUNCHER_EOF
 install -D -m 755 build/lobjur /app/bin/lobjur
 
 # Install JavaScript libraries
-cp -r build/jslibs /app/bin/jslibs
+cp -r build/jslibs /app/bin/
 
 # Install icons
 mkdir -p /app/share/
-cp -r data/icons /app/share/icons/
+cp -r data/icons /app/share/
 
 # Install desktop file
 install -D data/com.ranfdev.Lobjur.desktop /app/share/applications/com.ranfdev.Lobjur.desktop
