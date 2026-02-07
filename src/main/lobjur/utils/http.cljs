@@ -26,5 +26,4 @@
   (-> (get-raw url options)
       (.then (comp
               #(. (js/TextDecoder.) decode %)
-              #(. ^js % toArray)
-              #(. ^js % gBytes)))))
+              #(. ^js % get_data)))))
