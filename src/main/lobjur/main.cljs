@@ -1,10 +1,9 @@
 (ns lobjur.main
   (:require
-   ["gjs.byteArray" :as ByteArray]
-   ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.Gdk" :as Gdk]
-   ["gjs.gi.Gtk" :as Gtk]
-   ["gjs.gi.Gio" :as Gio]
+   ["gi://Adw$default" :as Adw]
+   ["gi://Gdk$default" :as Gdk]
+   ["gi://Gtk$default" :as Gtk]
+   ["gi://Gio$default" :as Gio]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
@@ -136,6 +135,7 @@
                :default_height 720
                :content
                (build-ui (window-content))})]
+    (println "Window created:" win)
     (doto win
       (.present)
       (.add_action (doto (Gio/SimpleAction. #js {:name "about"})

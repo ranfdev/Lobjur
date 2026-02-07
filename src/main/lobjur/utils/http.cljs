@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [get update])
   (:require
    ["gi://Soup$default" :as Soup]
-   ["gi://Gio" :as Gio]))
+   ["gi://Gio$default" :as Gio]))
 
 (js* "~{}._promisify(~{}.Session.prototype, 'send_and_read_async', 'send_and_read_finish')", Gio, Soup)
 

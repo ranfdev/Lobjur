@@ -1,10 +1,10 @@
 (ns lobjur.widgets.comments
   (:require
-   ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.Gio" :as Gio]
-   ["gjs.gi.GLib" :as GLib]
-   ["gjs.gi.Gtk" :as Gtk]
-   ["gjs.gi.Pango" :as Pango]
+   ["gi://Adw$default" :as Adw]
+   ["gi://Gio$default" :as Gio]
+   ["gi://GLib$default" :as GLib]
+   ["gi://Gtk$default" :as Gtk]
+   ["gi://Pango$default" :as Pango]
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [lobster.core :as lobster]

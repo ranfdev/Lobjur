@@ -1,6 +1,6 @@
 (ns lobjur.widgets.shared
   (:require
-   ["gjs.gi.Gtk" :as Gtk]))
+   ["gi://Gtk$default" :as Gtk]))
 
 (defn upvote-btn [score]
   [Gtk/Box

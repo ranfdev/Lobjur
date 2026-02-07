@@ -1,8 +1,8 @@
 (ns lobjur.widgets.stories-list-view
   (:require
-   ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.GLib" :as GLib]
-   ["gjs.gi.Gtk" :as Gtk]
+   ["gi://Adw$default" :as Adw]
+   ["gi://GLib$default" :as GLib]
+   ["gi://Gtk$default" :as Gtk]
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [lobster.core :as lobster]
