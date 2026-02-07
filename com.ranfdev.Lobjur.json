@@ -1,7 +1,7 @@
 {
     "app-id" : "com.ranfdev.Lobjur",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "44",
+    "runtime-version" : "49",
     "sdk" : "org.gnome.Sdk",
     "command" : "lobjur",
     "finish-args" : [
@@ -26,8 +26,8 @@
             "sources" : [
                 {
                     "type" : "archive",
-                    "url" : "https://github.com/ranfdev/Lobjur/releases/download/v1.0.1/com.ranfdev.Lobjur.tar.xz",
-                    "sha256": "6d462d30b34b475ade8b7037ce569a4e4e6f187445920c1590a44efdcad8da7d",
+                    "url" : "https://github.com/ranfdev/Lobjur/releases/download/v1.3.0/com.ranfdev.Lobjur.tar.xz",
+                    "sha256": "c0ada0510613cccec2a798d0200e8a69ed2c013b99388cdec9b2a0cece46e922",
                     "x-checker-data": {
                         "type": "json",
                         "url": "https://api.github.com/repos/ranfdev/Lobjur/releases/latest",
