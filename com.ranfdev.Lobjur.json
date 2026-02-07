@@ -3,6 +3,16 @@
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "49",
     "sdk" : "org.gnome.Sdk",
+    "sdk-extensions": [
+        "org.freedesktop.Sdk.Extension.openjdk25",
+        "org.freedesktop.Sdk.Extension.node22"
+    ],
+    "build-options" : {
+        "append-path" : "/usr/lib/sdk/openjdk25/bin:/usr/lib/sdk/node22/bin",
+        "env" : {
+            "NODE_PATH" : "/usr/lib/sdk/node22/lib/node_modules"
+        }
+    },
     "command" : "lobjur",
     "finish-args" : [
         "--share=ipc",
@@ -13,11 +23,43 @@
     ],
     "modules" : [
         {
+            "name": "clojure",
+            "buildsystem": "simple",
+            "build-options": {
+                "build-args": [
+                    "--share=network"
+                ]
+            },
+            "build-commands": [
+                "bash ./linux-install.sh --prefix /app"
+            ],
+            "sources": [
+                {
+                    "type": "file",
+                    "url": "https://download.clojure.org/install/linux-install-1.12.0.1479.sh",
+                    "sha256": "94f29b9b66183bd58307c46fb561fd9e9148666bac13a4518a9931b6f989d830",
+                    "dest-filename": "linux-install.sh"
+                }
+            ]
+        },
+        {
             "name" : "Lobjur",
             "buildsystem" : "simple",
+            "build-options": {
+                "build-args": [
+                    "--share=network"
+                ]
+            },
             "build-commands": [
-                "install -D app.js /app/bin/lobjur",
-                "cp -r jslibs /app/bin/jslibs",
+                "npm install",
+                "clojure -P",
+                "cat shadow-cljs.edn",
+                "npx shadow-cljs compile app",
+                "echo '#!/usr/bin/gjs -m' > /app/bin/lobjur",
+                "echo 'import { main } from \"./jslibs/main.js\";' >> /app/bin/lobjur",
+                "echo 'main();' >> /app/bin/lobjur",
+                "chmod +x /app/bin/lobjur",
+                "cp -r build/jslibs /app/bin/jslibs",
                 "mkdir -p /app/share/",
                 "cp -r data/icons /app/share/icons/",
                 "install -D data/com.ranfdev.Lobjur.desktop /app/share/applications/com.ranfdev.Lobjur.desktop",
@@ -25,15 +67,8 @@
             ],
             "sources" : [
                 {
-                    "type" : "archive",
-                    "url" : "https://github.com/ranfdev/Lobjur/releases/download/v1.3.0/com.ranfdev.Lobjur.tar.xz",
-                    "sha256": "c0ada0510613cccec2a798d0200e8a69ed2c013b99388cdec9b2a0cece46e922",
-                    "x-checker-data": {
-                        "type": "json",
-                        "url": "https://api.github.com/repos/ranfdev/Lobjur/releases/latest",
-                        "version-query": ".tag_name | sub(\"^v\"; \"\")",
-                        "url-query": ".assets[] | select(.name==\"com.ranfdev.Lobjur.tar.xz\") | .browser_download_url"
-                    }
+                    "type" : "dir",
+                    "path" : "."
                 }
             ]
         }
