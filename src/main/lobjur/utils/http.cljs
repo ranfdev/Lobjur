@@ -1,9 +1,8 @@
 (ns lobjur.utils.http
   (:refer-clojure :exclude [get update])
   (:require
-   ["gjs.gi.Soup" :as Soup]
-   ["gjs.gi.Gio" :as Gio]
-   ["gjs.byteArray" :as ByteArray]))
+   ["gi://Soup$default" :as Soup]
+   ["gi://Gio" :as Gio]))
 
 (js* "~{}._promisify(~{}.Session.prototype, 'send_and_read_async', 'send_and_read_finish')", Gio, Soup)
 
@@ -26,5 +25,6 @@
 (defn get [url & {:as options}]
   (-> (get-raw url options)
       (.then (comp
-              ByteArray/toString
-              ByteArray/fromGBytes))))
+              #(. (js/TextDecoder.) decode %)
+              #(. ^js % toArray)
+              #(. ^js % gBytes)))))
