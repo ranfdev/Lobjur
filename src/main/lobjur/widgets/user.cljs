@@ -8,7 +8,9 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
-   [api.router :as api]))
+   [api.router :as api]
+   [rollui.resource :as r]
+   [rollui.resource-view :as rv]))
 
 (defn pixbuf-to-texture [px]
   (Gdk/Texture.new_for_pixbuf px))
@@ -72,16 +74,18 @@
       :$clicked #(state/send [:push-user-stories username])]]))
 
 (defn user-view [username]
-  [Adw/Clamp
-   :.add_css_class "background"
-   :margin-start 8
-   :margin-end 8
-   :margin-top 8
-   :margin-bottom 8
-   :child
-   [Gtk/ScrolledWindow
-    :propagate-natural-height true
-    :child
-    (-> (api/GET (str "/users/" username))
-        (.then loaded-user-view))]])
+  (let [res (r/resource #(api/GET (str "/users/" username)))]
+    [Adw/Clamp
+     :.add_css_class "background"
+     :margin-start 8
+     :margin-end 8
+     :margin-top 8
+     :margin-bottom 8
+     :child
+     [Gtk/ScrolledWindow
+      :propagate-natural-height true
+      :child
+      (rv/resource-widget
+       res :user
+       {:on-ready loaded-user-view})]]))
 

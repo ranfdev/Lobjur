@@ -8,6 +8,8 @@
    [api.router :as api]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
+   [rollui.resource :as r]
+   [rollui.resource-view :as rv]
    [lobster.core :refer [base-url]]))
 
 (defn story-item-widget
@@ -72,12 +74,7 @@
                      :label (str comment_count)]]])])
 
 (defn stories-list-view [initial-url]
-  (let [hal-response (atom nil)
-        ;; Perform initial fetch immediately, outside the derived-atom
-        _ (-> (api/GET initial-url)
-              (.then (fn [resp]
-                       (println "Fetched stories response:" resp)
-                       (reset! hal-response resp))))]
+  (let [res (r/resource #(api/GET initial-url))]
     [Gtk/ScrolledWindow
      :.add_css_class "background"
      :propagate_natural_height true
@@ -95,29 +92,25 @@
        :.append
        [Adw/Bin
         :child
-        (derived-atom
-         [hal-response]
-         :stories
-         (fn [response]
-           [Adw/Bin
-            :height-request 48
-            :child
-            (-> (if response
-                  ;; Use fetch-collection to properly follow HATEOAS:
-                  ;; checks _embedded first, falls back to fetching link if needed
-                  (fetch-collection response :stories)
-                  (js/Promise.resolve []))
-                (.then
-                 (fn [stories]
-                   (if (> (count stories) 0)
-                     [Gtk/ListBox
-                      :.add_css_class "boxed-list"
-                      :.append
-                      (map story-item-widget stories)]
-                     [Adw/StatusPage
-                      :icon_name "mail-read-symbolic"
-                      :title
-                      "No Stories Available"]))))]))]
+        (rv/resource-widget
+         res :stories
+         {:on-ready
+          (fn [response]
+            [Adw/Bin
+             :height-request 48
+             :child
+             (-> (fetch-collection response :stories)
+                 (.then
+                  (fn [stories]
+                    (if (> (count stories) 0)
+                      [Gtk/ListBox
+                       :.add_css_class "boxed-list"
+                       :.append
+                       (map story-item-widget stories)]
+                      [Adw/StatusPage
+                       :icon_name "mail-read-symbolic"
+                       :title
+                       "No Stories Available"]))))])})]
        :.append
        [Gtk/Box
         :hexpand true
@@ -126,21 +119,20 @@
         [Gtk/Button
          :halign Gtk/Align.START
          :label "Previous"
-         :sensitive (derived-atom [hal-response] :prev-story-page #(and % (has-relation? % :prev)))
-         :$clicked #(when-let [resp @hal-response]
-                      (-> (prev-page resp)
-                          (.then (fn [new-resp] (reset! hal-response new-resp)))))]
+         :sensitive (derived-atom [res] :prev-story-page
+                     #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
+         :$clicked (fn [_] (when-let [data (r/rdata @res)]
+                          (r/resource-fetch! res (fn [] (prev-page data)))))]
         :.append
         [Gtk/Label :label "•"]
         :.append
         [Gtk/Button
          :halign Gtk/Align.END
          :label "Next"
-         :sensitive (derived-atom [hal-response] :next-story-page #(and % (has-relation? % :next)))
-         :$clicked #(when-let [resp @hal-response]
-                      (-> (next-page resp)
-                          (.then (fn [new-resp] (reset! hal-response new-resp)))))]]]]])) ; 6 closing brackets
-
+         :sensitive (derived-atom [res] :next-story-page
+                     #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
+         :$clicked (fn [_] (when-let [data (r/rdata @res)]
+                          (r/resource-fetch! res (fn [] (next-page data)))))]]]]]))
 (defn home-stories []
   (let [stack (Adw/ViewStack.)]
     (doto (.add_titled stack
