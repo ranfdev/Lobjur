@@ -9,7 +9,8 @@
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url hal-collection]]
-   [rollui.core :as rollui]))
+   [rollui.core :as rollui]
+   [lobster.core :refer [base-url]]))
 
 (defn comment-widget [refs]
   [Gtk/Box
@@ -103,7 +104,7 @@
     [Gtk/Box
      :spacing 8
      :.append
-     (let [host (.get_host (.parse_relative (js/URL. "https://lobste.rs") url GLib/UriFlags.NONE))]
+     (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
        [Gtk/Button
         :.add_css_class (list "small" "button" "flat" "caption")
         :halign Gtk/Align.START

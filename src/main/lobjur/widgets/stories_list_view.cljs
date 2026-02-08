@@ -7,7 +7,8 @@
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
    [api.helpers :refer [hal-collection external-url]]
-   [rollui.core :as rollui :refer [build-ui derived-atom]]))
+   [rollui.core :as rollui :refer [build-ui derived-atom]]
+   [lobster.core :refer [base-url]]))
 
 (defn story-item-widget
   [{:keys [title url score created_at comment_count tags submitter] :as story}]
@@ -34,7 +35,7 @@
        :spacing 8
        :selection-mode Gtk/SelectionMode.NONE
        :.append
-       (let [host (.get_host (.parse_relative (js/URL. "https://lobste.rs") url GLib/UriFlags.NONE))]
+       (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
          [Gtk/Button
           :.add_css_class (list "small" "button" "flat" "caption")
           :halign Gtk/Align.START
