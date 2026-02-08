@@ -5,12 +5,12 @@
    ["gjs.gi.Gtk" :as Gtk]
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
-   [lobster.core :as lobster]
+   [api.router :as api]
+   [api.helpers :refer [hal-collection external-url]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]))
 
 (defn story-item-widget
-  [{:keys [title url score created_at comment_count tags] :as story
-    {:keys [username]} :submitter_user}]
+  [{:keys [title url score created_at comment_count tags submitter] :as story}]
   [Gtk/Box
    :orientation Gtk/Orientation.HORIZONTAL
    :margin-top 4
@@ -34,7 +34,7 @@
        :spacing 8
        :selection-mode Gtk/SelectionMode.NONE
        :.append
-       (let [host (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
+       (let [host (.get_host (.parse_relative (js/URL. "https://lobste.rs") url GLib/UriFlags.NONE))]
          [Gtk/Button
           :.add_css_class (list "small" "button" "flat" "caption")
           :halign Gtk/Align.START
@@ -53,8 +53,8 @@
        :.append
        (list
         [Gtk/Button
-         :$clicked #(state/send [:push-user username])
-         :label username
+         :$clicked #(state/send [:push-user submitter])
+         :label submitter
          :css_classes #js ["small" "button" "flat" "body"]]
         [Gtk/Label
          :label (time-ago created_at)])])]
@@ -98,15 +98,16 @@
             :child
             (-> (provider :page p) ;; load the data and display the new listbox
                 (.then
-                 #(if (> (count %) 0)
-                    [Gtk/ListBox
-                     :.add_css_class "boxed-list"
-                     :.append
-                     (map story-item-widget %)]
-                    [Adw/StatusPage
-                     :icon_name "mail-read-symbolic"
-                     :title
-                     "No Stories Available"])))]))]
+                 #(let [stories (hal-collection % :stories)]
+                    (if (> (count stories) 0)
+                      [Gtk/ListBox
+                       :.add_css_class "boxed-list"
+                       :.append
+                       (map story-item-widget stories)]
+                      [Adw/StatusPage
+                       :icon_name "mail-read-symbolic"
+                       :title
+                       "No Stories Available"]))))]))]
        :.append
        [Gtk/Box
         :hexpand true
@@ -128,14 +129,18 @@
          :$clicked #(swap! page inc)]]]]]))
 
 (defn home-stories []
-  (let [stack (Adw/ViewStack.)]
+  (let [stack (Adw/ViewStack.)
+        hottest-provider (fn [& {:keys [page]}]
+                          (api/GET (str "/feeds/lobsters/hot?page=" page)))
+        active-provider (fn [& {:keys [page]}]
+                         (api/GET (str "/feeds/lobsters/newest?page=" page)))]
     (doto (.add_titled stack
-                       (build-ui (stories-list-view lobster/hottest))
+                       (build-ui (stories-list-view hottest-provider))
                        "hottest"
                        "Hottest")
       (.set_icon_name "power-profile-performance-symbolic"))
     (doto (.add_titled stack
-                       (build-ui (stories-list-view lobster/active))
+                       (build-ui (stories-list-view active-provider))
                        "active" "Active")
       (.set_icon_name "audio-speakers-symbolic"))
     (swap! state/global-widgets assoc :home-stories stack)

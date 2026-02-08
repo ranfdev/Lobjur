@@ -8,7 +8,7 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
-   [lobster.core :as lobster]))
+   [api.router :as api]))
 
 (defn pixbuf-to-texture [px]
   (Gdk/Texture.new_for_pixbuf px))
@@ -47,9 +47,10 @@
       [Adw/Avatar
        :size 72
        :custom-image
-       (.then
-        (fetch-pixbuf (lobster/rel avatar_url))
-        pixbuf-to-texture)]
+       (when avatar_url
+         (.then
+          (fetch-pixbuf avatar_url)
+          pixbuf-to-texture))]
       :.append
       [Gtk/Box
        :orientation Gtk/Orientation.VERTICAL
@@ -81,6 +82,6 @@
    [Gtk/ScrolledWindow
     :propagate-natural-height true
     :child
-    (-> (lobster/user username)
+    (-> (api/GET (str "/users/" username))
         (.then loaded-user-view))]])
 

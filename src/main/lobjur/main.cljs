@@ -9,9 +9,9 @@
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
-   [lobster.core :as lobster]
-   [rollui.core :refer [build-ui]]
-   [api.router :as api]))
+   [api.router :as api]
+   [api.helpers :refer [external-url]]
+   [rollui.core :refer [build-ui]]))
 
 (def back-btn [Gtk/Button
                :$clicked #(state/send [:pop-main-stack])
@@ -54,23 +54,26 @@
            (push-titled-view state (user/user-view payload) payload)
            :push-user-stories
            (push-titled-view state
-                             (stories-list-view (partial lobster/user-stories-newest payload))
+                             (stories-list-view (fn [& {:keys [page]}]
+                                                 (api/GET (str "/users/" payload "/stories?page=" page))))
                              payload)
            :push-domain-stories
            (push-titled-view state
-                             (stories-list-view (partial lobster/domain-stories payload))
+                             (stories-list-view (fn [& {:keys [page]}]
+                                                 (api/GET (str "/domains/" payload "/stories?page=" page))))
                              payload)
            :push-story
            (-> state
                (push-titled-view (comments/comments-view payload) "Comments")
                (assoc :header-end
                       [Gtk/LinkButton
-                       :uri (lobster/rel "s/" (:short_id payload))
+                       :uri (external-url payload)
                        :icon-name "web-browser-symbolic"
                        :css_classes #js ["image-button"]]))
            :push-tagged-stories
            (push-titled-view state
-                             (stories-list-view (partial lobster/tagged payload))
+                             (stories-list-view (fn [& {:keys [page]}]
+                                                 (api/GET (str "/tags/" payload "/stories?source=lobsters&page=" page))))
                              payload)
            :pop-main-stack
            (let [prev-state (:prev-state state)]

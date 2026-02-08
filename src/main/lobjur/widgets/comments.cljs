@@ -7,7 +7,8 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
-   [lobster.core :as lobster]
+   [api.router :as api]
+   [api.helpers :refer [external-url hal-collection]]
    [rollui.core :as rollui]))
 
 (defn comment-widget [refs]
@@ -37,21 +38,32 @@
      :margin-bottom 8
      :xalign 0.0])])
 
+(defn- flatten-comments
+  "Flatten a nested comment tree into a list with indent levels."
+  ([comments] (flatten-comments comments 0))
+  ([comments level]
+   (mapcat (fn [comment]
+             (cons
+              (assoc comment :indent_level level)
+              (when-let [replies (get-in comment [:_embedded :replies])]
+                (flatten-comments replies (inc level)))))
+           comments)))
+
 (defn list-setup [_ ^js item]
   (.set_activatable item false)
   (.set_child item (rollui/RefsWidget comment-widget)))
 (defn list-bind [_ ^js item]
   (let [data (.-data (.get_item item))
-        {:keys [comment_plain indent_level created_at commenting_user]} data
+        {:keys [text indent_level created_at author]} data
         child (.get_child item)
         refs ^js @(.-refs child)]
     (.set_margin_start ^js (:box refs) (* 4 indent_level))
     (doto ^js (:user-btn refs)
-      (.set_label commenting_user)
+      (.set_label author)
       (.connect "clicked"
-                #(state/send [:push-user commenting_user])))
+                #(state/send [:push-user author])))
     (.set_label ^js (:time-ago refs) (time-ago created_at))
-    (.set_label ^js (:label refs) comment_plain)))
+    (.set_label ^js (:label refs) text)))
 
 (defn comments-list-view [comments]
   (let [store (Gio/ListStore. (.-$gtype rollui/DataObject))
@@ -65,7 +77,7 @@
                   (.connect "bind" list-bind))]
     (Gtk/ListView.new selection-model factory)))
 
-(defn comments-view [{:keys [title url score tags short_id]}]
+(defn comments-view [{:keys [id title url score tags]}]
   [Adw/Clamp
    :hexpand true
    :.add_css_class "background"
@@ -91,9 +103,7 @@
     [Gtk/Box
      :spacing 8
      :.append
-     (let [host
-           ; maybe I should get only the base domain...
-           (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))]
+     (let [host (.get_host (.parse_relative (js/URL. "https://lobste.rs") url GLib/UriFlags.NONE))]
        [Gtk/Button
         :.add_css_class (list "small" "button" "flat" "caption")
         :halign Gtk/Align.START
@@ -107,17 +117,18 @@
         :$clicked #(state/send [:push-tagged-stories t])
         :.add_css_class (list "small" "flat" "tag" "caption")])]
     :.append
-    (-> (lobster/story short_id)
+    (-> (api/GET (str "/stories/" id "/comments"))
         (.then
-         (fn [comments]
-           (if (> (count (:comments comments)) 0)
-             [Gtk/ScrolledWindow
-              :propagate-natural-height true
-              :vexpand true
-              :child
-              (comments-list-view (:comments comments))]
-             [Adw/StatusPage
-              :title "No comments available"
-              :icon-name "user-invisible-symbolic"
-              :.add_css_class "compact"]))))]])
+         (fn [response]
+           (let [comments (flatten-comments (hal-collection response :comments))]
+             (if (> (count comments) 0)
+               [Gtk/ScrolledWindow
+                :propagate-natural-height true
+                :vexpand true
+                :child
+                (comments-list-view comments)]
+               [Adw/StatusPage
+                :title "No comments available"
+                :icon-name "user-invisible-symbolic"
+                :.add_css_class "compact"])))))]])
 
