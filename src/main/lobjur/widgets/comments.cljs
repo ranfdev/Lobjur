@@ -42,15 +42,14 @@
   (.set_child item (rollui/RefsWidget comment-widget)))
 (defn list-bind [_ ^js item]
   (let [data (.-data (.get_item item))
-        {:keys [comment_plain indent_level created_at]
-         {:keys [username]} :commenting_user} data
+        {:keys [comment_plain indent_level created_at commenting_user]} data
         child (.get_child item)
         refs ^js @(.-refs child)]
     (.set_margin_start ^js (:box refs) (* 4 indent_level))
     (doto ^js (:user-btn refs)
-      (.set_label username)
+      (.set_label commenting_user)
       (.connect "clicked"
-                #(state/send [:push-user username])))
+                #(state/send [:push-user commenting_user])))
     (.set_label ^js (:time-ago refs) (time-ago created_at))
     (.set_label ^js (:label refs) comment_plain)))
 
@@ -58,7 +57,7 @@
   (let [store (Gio/ListStore. (.-$gtype rollui/DataObject))
         _ (doseq [c comments]
             (.append store (rollui/DataObject. c)))
-        selection-model (doto (Gtk/NoSelection. store)
+        selection-model (doto (Gtk/NoSelection.)
                           ;; doesn't work setting it in the constructor...)
                           (.set_model store))
         factory (doto (Gtk/SignalListItemFactory.new)

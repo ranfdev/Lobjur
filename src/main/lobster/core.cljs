@@ -34,12 +34,12 @@
 
 (defn user [username & {:as params}]
   (.then
-   (http/get (rel "u/" (str username ".json")) {:params params})
+   (http/get (rel (str "~" username ".json")) {:params params})
    parse-json))
 
 (defn user-stories-newest [username & {:as params}]
   (.then
-   (http/get (rel "newest/" (str username ".json")) {:params params})
+   (http/get (rel (str "~" username "/") "stories.json") {:params params})
    parse-json))
 
 (defn domain-stories [domain & {:as params}]
