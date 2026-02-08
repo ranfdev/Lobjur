@@ -34,7 +34,6 @@
 
                  :else
                  [false {}])]
-    (debug-log "Segment match:" pattern-seg "vs" path-seg "=>" (first result))
     result))
 
 (defn- match-route
@@ -53,9 +52,6 @@
                      (let [[matched? seg-params] (segment-match (first psegs) (first pathsegs))]
                        (when matched?
                          (recur (rest psegs) (rest pathsegs) (merge params seg-params)))))))]
-    (if result
-      (debug-log "✓ Pattern" pattern "matched with params:" (:params result))
-      (debug-log "✗ Pattern" pattern "did not match"))
     result))
 
 ;; Route handlers
@@ -179,7 +175,6 @@
 (defn- find-route
   "Find a matching route for a path."
   [path]
-  (debug-log "Finding route for path:" path)
   (let [result (some (fn [[pattern handler]]
                        (when-let [match (match-route pattern path)]
                          {:handler handler
