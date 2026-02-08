@@ -38,6 +38,18 @@
   [r]
   (resource-fetch! r (.-__resource_last_fn ^js r)))
 
+(defn lazy-resource
+  "Like `resource` but does NOT start fetching immediately.
+   Returns an atom in :idle state. Call `resource-refetch!` to trigger the first fetch."
+  [fetch-fn]
+  (let [gen (atom 0)
+        r   (atom {:status :idle :data nil :error nil})]
+    (set! (.-__resource_gen r) gen)
+    (set! (.-__resource_last_fn r) fetch-fn)
+    r))
+
+(defn idle? [v] (= :idle (:status v)))
+
 ;; Convenience accessors (work on dereffed values)
 (defn loading? [v] (= :loading (:status v)))
 (defn ready?   [v] (= :ready   (:status v)))

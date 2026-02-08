@@ -81,8 +81,9 @@
                        :label (str comment_count)]]])]))
 
 (defn stories-list-view [initial-url]
-  (let [res (r/resource #(api/GET initial-url))]
+  (let [res (r/lazy-resource #(api/GET initial-url))]
     [Gtk/ScrolledWindow
+     :$map (fn [_] (when (r/idle? @res) (r/resource-refetch! res)))
      :.add_css_class "background"
      :propagate_natural_height true
      :hscrollbar_policy Gtk/PolicyType.NEVER

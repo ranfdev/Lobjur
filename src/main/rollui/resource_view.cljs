@@ -27,6 +27,7 @@
      key
      (fn [{:keys [status data error]}]
        (case status
+         :idle    (on-loading data)
          :loading (on-loading data)
          :ready   (on-ready data)
          :error   (on-error error data))))))
