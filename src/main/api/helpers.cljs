@@ -130,6 +130,11 @@
   (or (contains? (:_embedded resource) rel)
       (contains? (:_links resource) rel)))
 
+(defn placeholder?
+  "Check if a HAL resource is a placeholder that needs fetching."
+  [resource]
+  (:_placeholder resource))
+
 (defn embedded?
   "Check if a relation is embedded (not just linked).
    

@@ -6,7 +6,7 @@
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
-   [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation?]]
+   [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]
@@ -80,6 +80,26 @@
                        :css_classes #js ["caption-heading" "numeric"]
                        :label (str comment_count)]]])]))
 
+(defn- story-item-placeholder-widget []
+  [Gtk/Box
+   :orientation Gtk/Orientation.HORIZONTAL
+   :margin-top 4 :margin-bottom 4 :margin-start 8 :margin-end 4
+   :height-request 72
+   :.append [Adw/Spinner :halign Gtk/Align.CENTER :valign Gtk/Align.CENTER]])
+
+(defn- lazy-story-widget
+  "Render a story, fetching it first if it's a placeholder."
+  [story]
+  (if (placeholder? story)
+    (let [res (r/resource #(api/GET (hal-link story :self)))]
+      [Adw/Bin
+       :child
+       (rv/resource-widget
+        res :lazy-story
+        {:on-ready (fn [full-story] (story-item-widget full-story))
+         :on-loading (fn [_] (story-item-placeholder-widget))})])
+    (story-item-widget story)))
+
 (defn stories-list-view [initial-url]
   (let [res (r/lazy-resource #(api/GET initial-url))]
     [Gtk/ScrolledWindow
@@ -114,7 +134,7 @@
                       [Gtk/ListBox
                        :.add_css_class "navigation-sidebar"
                        :.append
-                       (map story-item-widget stories)]
+                       (map lazy-story-widget stories)]
                       [Adw/StatusPage
                        :icon_name "mail-read-symbolic"
                        :title

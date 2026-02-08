@@ -23,6 +23,14 @@
                                      :external-url (not-empty (:url story))
                                      :author (:by story))}))
 
+(defn- placeholder-hn-story
+  "Create a placeholder story with just an ID and self-link."
+  [hn-id]
+  (let [id (proto/make-story-id :hn hn-id)]
+    {:id         id
+     :_placeholder true
+     :_links     {:self (hal/link (str "/stories/" id))}}))
+
 (defn- normalize-hn-comment
   "Normalize a HN comment to HAL format."
   [comment]
@@ -58,22 +66,23 @@
   
   (fetch-feed [_ feed-type query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          fetch-fn (case feed-type
-                     "top"    hn/top-stories
-                     "newest" hn/new-stories
-                     "best"   hn/best-stories
-                     hn/top-stories)
+          ids-fn (case feed-type
+                   "top"    hn/top-story-ids
+                   "newest" hn/new-story-ids
+                   "best"   hn/best-story-ids
+                   hn/top-story-ids)
           base-href (str "/feeds/hn/" feed-type)
           query-params (dissoc query :page)]
-      (-> (fetch-fn :page page)
-          (.then (fn [stories]
-                   (-> (hal/collection
-                        base-href :stories
-                        (mapv normalize-hn-story stories))
-                       (hal/paginated base-href page 
-                                      :has-next (>= (count stories) 30)
-                                      :has-prev (> page 1)
-                                      :query-params query-params)))))))
+      (-> (ids-fn)
+          (.then (fn [ids]
+                   (let [page-ids (hn/paginate-ids ids page)]
+                     (-> (hal/collection
+                          base-href :stories
+                          (mapv placeholder-hn-story page-ids))
+                         (hal/paginated base-href page
+                                        :has-next (>= (count page-ids) hn/page-size)
+                                        :has-prev (> page 1)
+                                        :query-params query-params))))))))
   
   (fetch-story [_ native-id]
     (-> (hn/item native-id)
@@ -123,15 +132,17 @@
     (let [page (js/parseInt (or (:page query) "1") 10)
           base-href (str "/users/" username "/stories")
           query-params (dissoc query :page)]
-      (-> (hn/user-stories username :page page)
-          (.then (fn [stories]
-                   (-> (hal/collection
-                        base-href :stories
-                        (mapv normalize-hn-story stories))
-                       (hal/paginated base-href page 
-                                      :has-next (>= (count stories) 30)
-                                      :has-prev (> page 1)
-                                      :query-params query-params)))))))
+      (-> (hn/user username)
+          (.then (fn [u]
+                   (let [submitted (or (:submitted u) [])
+                         page-ids (hn/paginate-ids submitted page)]
+                     (-> (hal/collection
+                          base-href :stories
+                          (mapv placeholder-hn-story page-ids))
+                         (hal/paginated base-href page
+                                        :has-next (>= (count page-ids) hn/page-size)
+                                        :has-prev (> page 1)
+                                        :query-params query-params))))))))
   
   (fetch-tags [_]
     (js/Promise.reject (js/Error. "HackerNews does not support tags")))
