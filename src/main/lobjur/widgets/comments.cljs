@@ -1,7 +1,6 @@
 (ns lobjur.widgets.comments
   (:require
    ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.Gio" :as Gio]
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
@@ -9,79 +8,69 @@
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url fetch-collection hal-link]]
-   [rollui.core :as rollui]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
 
-(defn comment-widget [refs]
-  [Gtk/Box
-   ::rollui/ref-in [refs :box]
-   :.add_css_class "comment"
-   :orientation Gtk/Orientation.VERTICAL
-   :.append
-   (list
+(defn- comment-content-widget [comment]
+  (let [{:keys [text created_at author]} comment
+        author-href (hal-link comment :author)]
     [Gtk/Box
+     :.add_css_class "comment"
+     :orientation Gtk/Orientation.VERTICAL
      :.append
-     [Gtk/Button
-      ::rollui/ref-in [refs :user-btn]
-      :halign Gtk/Align.START
-      :css_classes #js ["small" "button" "flat" "heading"]]
-     :.append
-     [Gtk/Label
-      ::rollui/ref-in [refs :time-ago]]]
+     (list
+      [Gtk/Box
+       :.append
+       [Gtk/Button
+        :label author
+        :halign Gtk/Align.START
+        :css_classes #js ["small" "button" "flat" "heading"]
+        :$clicked #(state/send [:push-user {:href author-href :title author}])]
+       :.append
+       [Gtk/Label :label (time-ago created_at)]]
 
-    [Gtk/Label
-     ::rollui/ref-in [refs :label]
-     :selectable true
-     :wrap true
-     :wrap-mode Pango/WrapMode.WORD_CHAR
-     :margin-start 8
-     :margin-end 8
-     :margin-bottom 8
-     :xalign 0.0])])
+      [Gtk/Label
+       :label text
+       :selectable true
+       :wrap true
+       :wrap-mode Pango/WrapMode.WORD_CHAR
+       :margin-start 8
+       :margin-end 8
+       :margin-bottom 8
+       :xalign 0.0])]))
 
-(defn- flatten-comments
-  "Flatten a nested comment tree into a list with indent levels."
-  ([comments] (flatten-comments comments 0))
-  ([comments level]
-   (mapcat (fn [comment]
-             (cons
-              (assoc comment :indent_level level)
-              ;; Note: replies are embedded by design for nested comments,
-              ;; not fetched separately. This is the one legitimate use of
-              ;; direct _embedded access for nested structures.
-              (when-let [replies (get-in comment [:_embedded :replies])]
-                (flatten-comments replies (inc level)))))
-           comments)))
-
-(defn list-setup [_ ^js item]
-  (.set_activatable item false)
-  (.set_child item (rollui/RefsWidget comment-widget)))
-(defn list-bind [_ ^js item]
-  (let [data (.-data (.get_item item))
-        {:keys [text indent_level created_at author] :as comment-data} data
-        author-href (hal-link comment-data :author)
-        child (.get_child item)
-        refs ^js @(.-refs child)]
-    (.set_margin_start ^js (:box refs) (* 4 indent_level))
-    (doto ^js (:user-btn refs)
-      (.set_label author)
-      (.connect "clicked"
-                #(state/send [:push-user {:href author-href :title author}])))
-    (.set_label ^js (:time-ago refs) (time-ago created_at))
-    (.set_label ^js (:label refs) text)))
-
-(defn comments-list-view [comments]
-  (let [store (Gio/ListStore. (.-$gtype rollui/DataObject))
-        _ (doseq [c comments]
-            (.append store (rollui/DataObject. c)))
-        selection-model (doto (Gtk/NoSelection.)
-                          ;; doesn't work setting it in the constructor...)
-                          (.set_model store))
-        factory (doto (Gtk/SignalListItemFactory.new)
-                  (.connect "setup" list-setup)
-                  (.connect "bind" list-bind))]
-    (Gtk/ListView.new selection-model factory)))
+(defn comment-tree-widget [comment]
+  [Gtk/Box
+   :orientation Gtk/Orientation.VERTICAL
+   :spacing 4
+   :.append
+   (comment-content-widget comment)
+   :.append
+   (if-let [embedded-replies (get-in comment [:_embedded :replies])]
+     ;; Lobsters: embedded, render directly
+     [Gtk/Box
+      :orientation Gtk/Orientation.VERTICAL
+      :margin-start 16
+      :spacing 4
+      :.append
+      (map comment-tree-widget embedded-replies)]
+     ;; HN: linked, fetch lazily with resource
+     (when (get-in comment [:_links :replies :href])
+       (let [replies-res (r/resource #(fetch-collection comment :replies {:default []}))]
+         [Adw/Bin
+          :margin-start 16
+          :child
+          (rv/resource-widget
+           replies-res (keyword (str "replies-" (:id comment)))
+           {:on-ready
+            (fn [replies]
+              (if (seq replies)
+                [Gtk/Box
+                 :orientation Gtk/Orientation.VERTICAL
+                 :spacing 4
+                 :.append
+                 (map comment-tree-widget replies)]
+                [Gtk/Box]))})])))])
 
 (defn comments-view [{:keys [title url score tags] :as story}]
   (let [comments-href (get-in story [:_links :comments :href])
@@ -134,20 +123,24 @@
           :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
           :.add_css_class (list "small" "flat" "tag" "caption")])]
       :.append
-      [Adw/Bin
+      [Gtk/ScrolledWindow
+       :propagate-natural-height true
+       :vexpand true
        :child
-       (rv/resource-widget
-        res :comments
-        {:on-ready
-         (fn [comments]
-           (let [flat-comments (flatten-comments comments)]
-             (if (> (count flat-comments) 0)
-               [Gtk/ScrolledWindow
-                :propagate-natural-height true
-                :vexpand true
-                :child
-                (comments-list-view flat-comments)]
-               [Adw/StatusPage
-                :title "No comments available"
-                :icon-name "user-invisible-symbolic"
-                :.add_css_class "compact"])))})]]]))
+       [Adw/Bin
+        :child
+        (rv/resource-widget
+         res :comments
+         {:on-ready
+          (fn [comments]
+            (if (seq comments)
+              [Gtk/Box
+               :orientation Gtk/Orientation.VERTICAL
+               :spacing 8
+               :.append
+               (for [c comments]
+                 (comment-tree-widget c))]
+              [Adw/StatusPage
+               :title "No comments available"
+               :icon-name "user-invisible-symbolic"
+               :.add_css_class "compact"]))})]]]]))

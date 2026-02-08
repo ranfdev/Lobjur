@@ -85,35 +85,18 @@
         (js/Error. (str "No link or embedded resource for relation: " rel))))))
 
 (defn fetch-collection
-  "Fetch a collection relation and extract items following HATEOAS principles.
-   
-   This is the RECOMMENDED way to access collections in application code.
-   It properly handles both embedded collections (optimization) and linked
-   collections (fetched on demand):
-   
-   1. First checks if collection is embedded (_embedded)
-   2. If not embedded, follows the link to fetch it
-   3. Extracts and returns the collection items
-   
-   Returns: Promise resolving to array of items
-   
-   Example:
-     ;; Will use embedded if available, otherwise fetch the link
-     (-> (api/GET '/feeds/lobsters/hot')
-         (.then #(fetch-collection % :stories))
-         (.then (fn [stories] (render-stories stories))))
-     
-     ;; Chaining with other promises
-     (fetch-collection story :comments)
-     => Promise<[comment1 comment2 ...]>"
-  [resource rel]
-  ;; Check if the collection is directly embedded (already an array)
-  (if-let [embedded-coll (get-in resource [:_embedded rel])]
-    ;; Collection is embedded - return it directly
-    (js/Promise.resolve embedded-coll)
-    ;; Collection is not embedded - fetch the link and extract from response
-    (-> (follow-link resource rel)
-        (.then #(hal-collection % rel)))))
+  "Fetch a collection from a HAL resource, checking _embedded first, then _links.
+   Optionally provide a default value to return when neither exists."
+  ([resource rel] (fetch-collection resource rel nil))
+  ([resource rel {:keys [default]}]
+   (if-let [embedded-coll (get-in resource [:_embedded rel])]
+     (js/Promise.resolve embedded-coll)
+     (if (get-in resource [:_links rel :href])
+       (-> (follow-link resource rel)
+           (.then #(hal-collection % rel)))
+       (if (some? default)
+         (js/Promise.resolve default)
+         (js/Promise.reject (js/Error. (str "No link for relation: " (name rel)))))))))
 
 ;; ============================================================================
 ;; Helper Predicates

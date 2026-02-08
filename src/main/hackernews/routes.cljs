@@ -36,7 +36,7 @@
    :_links     {:self (hal/link (str "/hn/stories/" hn-id))}})
 
 (defn- normalize-hn-comment
-  "Normalize a HN comment to HAL format."
+  "Normalize a HN comment to HAL format (shallow, no embedded children)."
   [comment]
   (let [id (:id comment)]
     {:id         id
@@ -47,9 +47,17 @@
                        (.toISOString)))
      :author     (:by comment)
      :score      0
-     :_links     (hal/comment-links "hn" id :author (:by comment))
-     :_embedded  (when (seq (:children comment))
-                   {:replies (mapv normalize-hn-comment (:children comment))})}))
+     :_links     (hal/comment-links "hn" id
+                                    :author (:by comment)
+                                    :replies (seq (:kids comment)))}))
+
+(defn- filter-comments
+  "Filter out deleted and dead comments."
+  [comments]
+  (->> comments
+       (filter some?)
+       (remove :deleted)
+       (remove :dead)))
 
 ;; --- Handlers ---
 
@@ -106,16 +114,36 @@
                    :submitter     (:by story)
                    :tags          []}))))))
 
-(defn- comments-handler [{:keys [params]}]
-  (-> (hn/item-with-comments (:id params))
-      (.then (fn [story]
-               (let [story-id (:id story)]
-                 (hal/resource
-                  {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
-                   :story (hal/link (str "/hn/stories/" story-id))}
-                  {}
-                  {:comments (mapv normalize-hn-comment (:children story))}))))))
+(defn- comment-replies-handler [{:keys [params]}]
+  (-> (hn/item (:id params))
+      (.then (fn [comment]
+               (let [kid-ids (or (:kids comment) [])
+                     comment-id (:id comment)]
+                 (if (empty? kid-ids)
+                   (hal/collection (str "/hn/comments/" comment-id "/replies") :replies [])
+                   (-> (js/Promise.all (mapv hn/item kid-ids))
+                       (.then (fn [kids]
+                                (hal/collection
+                                 (str "/hn/comments/" comment-id "/replies") :replies
+                                 (mapv normalize-hn-comment (filter-comments kids))))))))))))
 
+(defn- comments-handler [{:keys [params]}]
+  (-> (hn/item (:id params))
+      (.then (fn [story]
+               (let [kid-ids (or (:kids story) [])
+                     story-id (:id story)]
+                 (if (empty? kid-ids)
+                   (hal/resource
+                    {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
+                     :story (hal/link (str "/hn/stories/" story-id))}
+                    {} {:comments []})
+                   (-> (js/Promise.all (mapv hn/item kid-ids))
+                       (.then (fn [kids]
+                                (hal/resource
+                                 {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
+                                  :story (hal/link (str "/hn/stories/" story-id))}
+                                 {}
+                                 {:comments (mapv normalize-hn-comment (filter-comments kids))}))))))))))
 (defn- user-handler [{:keys [params]}]
   (let [username (:username params)]
     (-> (hn/user username)
@@ -161,5 +189,6 @@
      (r/routes
        (r/route "/stories/{id}"              story-handler)
        (r/route "/stories/{id}/comments"     comments-handler)
+       (r/route "/comments/{id}/replies"     comment-replies-handler)
        (r/route "/users/{username}"          user-handler)
        (r/route "/users/{username}/stories"  user-stories-handler)))))

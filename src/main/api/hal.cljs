@@ -58,10 +58,12 @@
     (seq tags)   (assoc :tag-stories (mapv (fn [t] (assoc (link (str "/" provider "/tags/" t "/stories")) :name t)) tags))))
 
 (defn comment-links
-  "Generate standard links for a comment."
-  [provider comment-id & {:keys [author]}]
+  "Generate standard links for a comment.
+   :replies is only added when the comment actually has replies (links = capabilities)."
+  [provider comment-id & {:keys [author replies]}]
   (cond-> {:self (link (str "/" provider "/comments/" comment-id))}
-    author (assoc :author (link (str "/" provider "/users/" author)))))
+    replies (assoc :replies (link (str "/" provider "/comments/" comment-id "/replies")))
+    author  (assoc :author (link (str "/" provider "/users/" author)))))
 
 (defn user-links
   "Generate standard links for a user."

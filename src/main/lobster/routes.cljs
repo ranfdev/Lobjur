@@ -14,6 +14,20 @@
       (.get_host (.parse_relative lobster/base-url url GLib/UriFlags.NONE))
       (catch :default _ nil))))
 
+(defn- build-comment-tree
+  "Build a tree structure from flat comments array using parent_comment field."
+  [flat-comments]
+  (let [;; Group comments by parent_comment
+        by-parent (group-by :parent_comment flat-comments)
+        ;; Helper to recursively build tree
+        build-node (fn build-node [comment]
+                     (let [children (get by-parent (:short_id comment))]
+                       (if (seq children)
+                         (assoc comment :replies (mapv build-node children))
+                         comment)))]
+    ;; Top-level comments have parent_comment = null
+    (mapv build-node (get by-parent nil))))
+
 (defn- normalize-lobster-story
   "Normalize a Lobsters story to HAL format."
   [story]
@@ -44,7 +58,9 @@
      :created_at (:created_at comment)
      :author     (:commenting_user comment)
      :score      (:score comment)
-     :_links     (hal/comment-links "lobsters" id :author (:commenting_user comment))
+     :_links     (hal/comment-links "lobsters" id
+                                    :author (:commenting_user comment)
+                                    :replies (seq (:replies comment)))
      :_embedded  (when (seq (:replies comment))
                    {:replies (mapv normalize-lobster-comment (:replies comment))})}))
 
@@ -117,12 +133,14 @@
 (defn- comments-handler [{:keys [params]}]
   (-> (lobster/story (:id params))
       (.then (fn [story]
-               (let [story-id (:short_id story)]
+               (let [story-id (:short_id story)
+                     ;; Build tree from flat comments before normalization
+                     comment-tree (build-comment-tree (:comments story))]
                  (hal/resource
                   {:self  (hal/link (str "/lobsters/stories/" story-id "/comments"))
                    :story (hal/link (str "/lobsters/stories/" story-id))}
                   {}
-                  {:comments (mapv normalize-lobster-comment (:comments story))}))))))
+                  {:comments (mapv normalize-lobster-comment comment-tree)}))))))
 
 (defn- user-handler [{:keys [params]}]
   (-> (lobster/user (:username params))
