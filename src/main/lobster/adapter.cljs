@@ -141,13 +141,17 @@
                                       :query-params query-params)))))))
   
   (fetch-tags [_]
-    (js/Promise.resolve
-     (hal/collection
-      "/feeds/lobsters/tags" :tags
-      [{:name "programming" :_links {:self (hal/link "/lobsters/tags/programming")
-                                     :stories (hal/link "/lobsters/tags/programming/stories")}}
-       {:name "web" :_links {:self (hal/link "/lobsters/tags/web")
-                             :stories (hal/link "/lobsters/tags/web/stories")}}])))
+    (-> (lobster/tags)
+        (.then (fn [tags]
+                 (hal/collection
+                  "/feeds/lobsters/tags" :tags
+                  (mapv (fn [tag]
+                          (let [tag-name (:tag tag)]
+                            {:name        tag-name
+                             :description (:description tag)
+                             :_links      {:self    (hal/link (str "/lobsters/tags/" tag-name))
+                                           :stories (hal/link (str "/lobsters/tags/" tag-name "/stories"))}}))
+                        tags))))))
   
   (fetch-tag-stories [_ tag query]
     (let [page (js/parseInt (or (:page query) "1") 10)

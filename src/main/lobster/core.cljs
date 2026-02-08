@@ -46,3 +46,8 @@
   (.then
    (http/get (rel "domain/" (str domain ".json")) {:params params})
    parse-json))
+
+(defn tags []
+  (.then
+   (http/get (rel "tags.json"))
+   parse-json))
