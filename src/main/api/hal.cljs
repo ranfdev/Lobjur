@@ -1,9 +1,23 @@
-(ns api.hal)
+(ns api.hal
+  (:require [api.url :as url]
+            [clojure.string :as str]))
+
+(defn- add-scheme
+  "Add in-process scheme to internal paths.
+   External links (http:// or https://) remain unchanged."
+  [href]
+  (if (or (str/starts-with? href "http://")
+          (str/starts-with? href "https://"))
+    href
+    (url/make-url :in-process href)))
 
 (defn link
-  "Create a HAL link object."
-  ([href] {:href href})
-  ([href opts] (merge {:href href} opts)))
+  "Create a HAL link with proper scheme.
+   Internal links get 'in-process://api' prefix.
+   External links remain unchanged."
+  ([href] (link href {}))
+  ([href opts]
+   (merge {:href (add-scheme href)} opts)))
 
 (defn self-link
   "Create a self link."
