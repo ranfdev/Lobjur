@@ -54,8 +54,14 @@
                  (assoc :sidebar-header-end [Gtk/MenuButton
                                              :icon-name "open-menu-symbolic"
                                              :menu-model (doto (Gio/Menu.)
+                                                           (.append "Reload" "win.reload")
                                                            (.append "About" "win.about")
                                                            (.append "Donate" "win.donate"))])))
+
+           :reload
+           (let [sidebar-view (build-ui (home-stories))]
+             (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+             state)
 
            :select-story
            (-> state
@@ -157,7 +163,9 @@
       (.add_action (doto (Gio/SimpleAction. #js {:name "about"})
                      (.connect "activate" #(about))))
       (.add_action (doto (Gio/SimpleAction. #js {:name "donate"})
-                     (.connect "activate" #(Gtk/show_uri nil "https://github.com/sponsors/ranfdev" 0)))))
+                     (.connect "activate" #(Gtk/show_uri nil "https://github.com/sponsors/ranfdev" 0))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "reload"})
+                     (.connect "activate" (fn [_ _] (state/send [:reload]))))))
     (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
