@@ -1,0 +1,62 @@
+(ns api.hal)
+
+(defn link
+  "Create a HAL link object."
+  ([href] {:href href})
+  ([href opts] (merge {:href href} opts)))
+
+(defn self-link
+  "Create a self link."
+  [href]
+  {:self (link href)})
+
+(defn resource
+  "Create a HAL resource with links and optional embedded resources.
+   
+   Usage:
+   (resource {:self \"/stories/123\"}
+             {:title \"My Story\"}
+             {:comments [...]})"
+  ([links] (resource links {} {}))
+  ([links data] (resource links data {}))
+  ([links data embedded]
+   (cond-> {:_links (if (contains? links :self)
+                      links
+                      (merge (self-link (:self links)) links))}
+     (seq data) (merge data)
+     (seq embedded) (assoc :_embedded embedded))))
+
+(defn collection
+  "Create a HAL collection resource with embedded items."
+  [self-href embed-key items & {:keys [links extra]}]
+  (resource (merge {:self (link self-href)} links)
+            (or extra {})
+            {embed-key items}))
+
+(defn story-links
+  "Generate standard links for a story."
+  [story-id & {:keys [external-url author]}]
+  (cond-> {:self     (link (str "/stories/" story-id))
+           :comments (link (str "/stories/" story-id "/comments"))}
+    author       (assoc :author (link (str "/users/" author)))
+    external-url (assoc :external (link external-url))))
+
+(defn comment-links
+  "Generate standard links for a comment."
+  [comment-id & {:keys [author]}]
+  (cond-> {:self (link (str "/comments/" comment-id))}
+    author (assoc :author (link (str "/users/" author)))))
+
+(defn user-links
+  "Generate standard links for a user."
+  [username]
+  {:self    (link (str "/users/" username))
+   :stories (link (str "/users/" username "/stories"))})
+
+(defn paginated
+  "Add pagination links to a resource."
+  [resource base-href page & {:keys [has-next has-prev]}]
+  (let [add-link (fn [r rel href] (assoc-in r [:_links rel] (link href)))]
+    (cond-> resource
+      has-prev (add-link :prev (str base-href "?page=" (dec page)))
+      has-next (add-link :next (str base-href "?page=" (inc page))))))
