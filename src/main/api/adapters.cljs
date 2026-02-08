@@ -135,7 +135,9 @@
                    (-> (hal/collection
                         base-href :stories
                         (mapv normalize-lobster-story stories))
-                       (hal/paginated base-href page :has-next (>= (count stories) 20))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 20)
+                                      :has-prev (> page 1))))))))
   
   (fetch-story [_ native-id]
     (-> (lobster/story native-id)
@@ -185,7 +187,9 @@
                    (-> (hal/collection
                         base-href :stories
                         (mapv normalize-lobster-story stories))
-                       (hal/paginated base-href page :has-next (>= (count stories) 20))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 20)
+                                      :has-prev (> page 1))))))))
   
   (fetch-tags [_]
     (js/Promise.resolve
@@ -205,7 +209,9 @@
                         base-href :stories
                         (mapv normalize-lobster-story stories)
                         :links {:tag (hal/link (str "/tags/" tag))})
-                       (hal/paginated base-href page :has-next (>= (count stories) 20))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 20)
+                                      :has-prev (> page 1))))))))
   
   (fetch-domain-stories [_ domain query]
     (let [page (js/parseInt (or (:page query) "1") 10)
@@ -215,7 +221,9 @@
                    (-> (hal/collection
                         base-href :stories
                         (mapv normalize-lobster-story stories))
-                       (hal/paginated base-href page :has-next (>= (count stories) 20)))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 20)
+                                      :has-prev (> page 1)))))))))
 
 ;; HackerNews Adapter
 
@@ -248,7 +256,9 @@
                    (-> (hal/collection
                         base-href :stories
                         (mapv normalize-hn-story stories))
-                       (hal/paginated base-href page :has-next (>= (count stories) 30))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 30)
+                                      :has-prev (> page 1))))))))
   
   (fetch-story [_ native-id]
     (-> (hn/item native-id)
@@ -302,7 +312,9 @@
                    (-> (hal/collection
                         base-href :stories
                         (mapv normalize-hn-story stories))
-                       (hal/paginated base-href page :has-next (>= (count stories) 30))))))))
+                       (hal/paginated base-href page 
+                                      :has-next (>= (count stories) 30)
+                                      :has-prev (> page 1))))))))
   
   (fetch-tags [_]
     (js/Promise.reject (js/Error. "HackerNews does not support tags")))
