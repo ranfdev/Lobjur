@@ -12,15 +12,15 @@
 
   <screenshots>
     <screenshot type="default" height="842" width="842">
+      <caption>Lobjur main window</caption> 
       <image>https://user-images.githubusercontent.com/23294184/188264118-76c8df44-10a4-4894-902e-66a006037d7f.png</image>
     </screenshot>
   </screenshots>
 
-
-
   <url type="homepage">https://github.com/ranfdev/Lobjur</url>
   <url type="bugtracker">https://github.com/ranfdev/Lobjur/issues/</url>
   <url type="donation">https://github.com/sponsors/ranfdev</url>
+  <url type="vcs-browser">https://github.com/ranfdev/Lobjur</url>
   <content_rating type="oars-1.0" />
 
   <releases>
