@@ -71,7 +71,7 @@
       [Gtk/Button
        :valign Gtk/Align.CENTER
        :css_classes #js ["button" "flat"]
-       :$clicked #(state/send [:push-story story])
+       :$clicked #(state/send [:select-story story])
        :child
        [Gtk/Overlay
         :child
@@ -84,7 +84,7 @@
   (let [res (r/lazy-resource #(api/GET initial-url))]
     [Gtk/ScrolledWindow
      :$map (fn [_] (when (r/idle? @res) (r/resource-refetch! res)))
-     :.add_css_class "background"
+
      :propagate_natural_height true
      :hscrollbar_policy Gtk/PolicyType.NEVER
      :child
@@ -112,7 +112,7 @@
                   (fn [stories]
                     (if (> (count stories) 0)
                       [Gtk/ListBox
-                       :.add_css_class "boxed-list"
+                       :.add_css_class "navigation-sidebar"
                        :.append
                        (map story-item-widget stories)]
                       [Adw/StatusPage

@@ -13,74 +13,80 @@
    [api.helpers :refer [external-url]]
    [rollui.core :refer [build-ui]]))
 
-(def back-btn [Gtk/Button
-               :$clicked #(state/send [:pop-main-stack])
-               :icon-name "go-previous-symbolic"])
+(defn set-content-root [state view]
+  (let [w (build-ui view)]
+    (.set_child ^js (:content-detail-bin @state/global-widgets) w)
+    (.pop_to_tag ^js (:content-nav-view @state/global-widgets) "content-root")
+    (.set_show_content ^js (:split-view @state/global-widgets) true)
+    (assoc state :selected-story-view w)))
 
-(defn push-view [s view]
-  (let [v (build-ui view)]
-    (doto ^js (:main-stack @state/global-widgets)
-      (.add_child v)
-      (.set_visible_child v))
-    (merge s
-           {:header-start nil
-            :header-end nil
-            :prev-state s
-            :curr-view v})))
+(defn push-sidebar-page [state view title]
+  (let [page (Adw/NavigationPage.
+              #js {:child (build-ui
+                           [Adw/ToolbarView
+                            :.add_top_bar [Adw/HeaderBar]
+                            :content view])
+                   :title title})]
+    (.push ^js (:sidebar-nav-view @state/global-widgets) page)
+    (.set_show_content ^js (:split-view @state/global-widgets) false)
+    state))
 
-(defn push-titled-view [s view title]
-  (-> s
-      (push-view view)
-      (assoc :header-start back-btn)
-      (assoc :title-widget [Gtk/Label :label title])))
+(defn push-content-page [state view title]
+  (let [page (Adw/NavigationPage.
+              #js {:child (build-ui
+                           [Adw/ToolbarView
+                            :.add_top_bar [Adw/HeaderBar]
+                            :content view])
+                   :title title})]
+    (.push ^js (:content-nav-view @state/global-widgets) page)
+    state))
+
 (defn app-transducer [f]
   (fn
     ([s] s)
     ([state [k payload :as action]]
      (-> (case k
            :init
+           (let [sidebar-view (build-ui (home-stories))]
+             (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+             (-> state
+                 (assoc :sidebar-header-start (:home-dropdown @state/global-widgets))
+                 (assoc :sidebar-header-end [Gtk/MenuButton
+                                             :icon-name "open-menu-symbolic"
+                                             :menu-model (doto (Gio/Menu.)
+                                                           (.append "About" "win.about")
+                                                           (.append "Donate" "win.donate"))])
+                 (assoc :sidebar-title-widget
+                        (:home-view-switcher @state/global-widgets))))
+
+           :select-story
            (-> state
-               (push-view (home-stories))
-               (assoc :header-start (:home-dropdown @state/global-widgets))
-               (assoc :header-end [Gtk/MenuButton
-                                   :icon-name "open-menu-symbolic"
-                                   :menu-model (doto (Gio/Menu.)
-                                                 (.append "About" "win.about")
-                                                 (.append "Donate" "win.donate"))])
-               (assoc :title-widget
-                      (:home-view-switcher @state/global-widgets)))
+               (set-content-root (comments/comments-view payload))
+               (assoc :selected-story payload)
+               (assoc :content-header-end
+                      (when-let [url (external-url payload)]
+                        [Gtk/LinkButton
+                         :uri url
+                         :icon-name "web-browser-symbolic"
+                         :css_classes #js ["image-button"]])))
+
            :push-user
-           (push-titled-view state (user/user-view payload) payload)
+           (push-content-page state (user/user-view payload) payload)
+
            :push-user-stories
-           (push-titled-view state
-                             (stories-list-view (str "/users/" payload "/stories"))
-                             payload)
+           (push-sidebar-page state
+                              (stories-list-view (str "/users/" payload "/stories"))
+                              (str payload "'s Stories"))
            :push-domain-stories
-           (push-titled-view state
-                             (stories-list-view (str "/domains/" payload "/stories"))
-                             payload)
-           :push-story
-           (-> state
-               (push-titled-view (comments/comments-view payload) "Comments")
-               (assoc :header-end
-                      [Gtk/LinkButton
-                       :uri (external-url payload)
-                       :icon-name "web-browser-symbolic"
-                       :css_classes #js ["image-button"]]))
+           (push-sidebar-page state
+                              (stories-list-view (str "/domains/" payload "/stories"))
+                              (str payload " Stories"))
            :push-tagged-stories
-           (push-titled-view state
-                             (stories-list-view (str "/tags/" payload "/stories?source=lobsters"))
-                             payload)
-           :pop-main-stack
-           (let [prev-state (:prev-state state)]
-             (doto ^js (:main-stack @state/global-widgets)
-               (.set_visible_child (:curr-view prev-state))
-               (.remove (:curr-view state)))
-             (merge state
-                    ;; Reset these keys to the ones in the previous state
-                    (select-keys
-                     prev-state
-                     [:prev-state :curr-view :title-widget :header-start :header-end]))))
+           (push-sidebar-page state
+                              (stories-list-view (str "/tags/" payload "/stories?source=lobsters"))
+                              (str payload " Stories"))
+
+           :pop-main-stack state)
 
          (f action)))))
 (state/add-transducer app-transducer)
@@ -131,10 +137,20 @@
   (let [win (Adw/ApplicationWindow.
              #js
               {:application app
-               :default_width 720
+               :default_width 900
                :default_height 720
                :content
                (build-ui (window-content))})]
+    ;; Add breakpoint: collapse split-view on narrow windows
+    (let [bp (Adw/Breakpoint.new
+               (Adw/BreakpointCondition.new_length
+                 Adw/BreakpointConditionLengthType.MAX_WIDTH
+                 500.0
+                 Adw/LengthUnit.SP))
+          split-view (:split-view @state/global-widgets)]
+      (.connect bp "apply" (fn [_] (.set_collapsed ^js split-view true)))
+      (.connect bp "unapply" (fn [_] (.set_collapsed ^js split-view false)))
+      (.add_breakpoint win bp))
     (println "Window created:" win)
     (doto win
       (.present)

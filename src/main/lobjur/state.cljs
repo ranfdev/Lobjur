@@ -22,4 +22,4 @@
 ; (send [:pop-main-stack])
 ; To test a comment-heavy story, open a story, then evaluate this line
 ; (-> (lobster/story "jclvos")
-;    (.then #(send [:push-story %])))
+;    (.then #(send [:select-story %])))
