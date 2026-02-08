@@ -182,14 +182,11 @@
 
 (defn home-stories []
   (let [content-bin (Adw/Bin.)
-        view-switcher (doto (Adw/ViewSwitcher.)
-                        (.set_policy Adw/ViewSwitcherPolicy.WIDE))
         initial-stack (build-view-stack (first sources))
         dropdown (Gtk/DropDown.
                   #js {:model (Gtk/StringList.
                                #js {:strings #js ["Lobsters" "Hacker News"]})})]
     (.set_child content-bin initial-stack)
-    (.set_stack view-switcher initial-stack)
     (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
       (.set_stack ^js bar initial-stack))
     (.connect dropdown "notify::selected"
@@ -198,11 +195,9 @@
                       source (nth sources idx)
                       new-stack (build-view-stack source)]
                   (.set_child content-bin new-stack)
-                  (.set_stack view-switcher new-stack)
                   (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
                     (.set_stack ^js bar new-stack)))))
     (swap! state/global-widgets assoc
-           :home-view-switcher view-switcher
            :home-dropdown dropdown)
     [Gtk/Box
      ::rollui/ref-in [global-widgets :home]

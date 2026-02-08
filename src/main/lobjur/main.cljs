@@ -55,9 +55,7 @@
                                              :icon-name "open-menu-symbolic"
                                              :menu-model (doto (Gio/Menu.)
                                                            (.append "About" "win.about")
-                                                           (.append "Donate" "win.donate"))])
-                 (assoc :sidebar-title-widget
-                        (:home-view-switcher @state/global-widgets))))
+                                                           (.append "Donate" "win.donate"))])))
 
            :select-story
            (-> state
@@ -149,16 +147,9 @@
                  Adw/LengthUnit.SP))
           split-view (:split-view @state/global-widgets)]
       (.connect bp "apply" (fn [_]
-                             (.set_collapsed ^js split-view true)
-                             (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                               (.set_reveal ^js bar true))
-                             (swap! state/state assoc :sidebar-title-widget nil)))
+                             (.set_collapsed ^js split-view true)))
       (.connect bp "unapply" (fn [_]
-                               (.set_collapsed ^js split-view false)
-                               (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                                 (.set_reveal ^js bar false))
-                               (swap! state/state assoc :sidebar-title-widget
-                                      (:home-view-switcher @state/global-widgets))))
+                               (.set_collapsed ^js split-view false)))
       (.add_breakpoint win bp))
     (println "Window created:" win)
     (doto win
