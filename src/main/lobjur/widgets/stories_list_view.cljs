@@ -140,20 +140,47 @@
                      #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
          :$clicked (fn [_] (when-let [data (r/rdata @res)]
                           (r/resource-fetch! res (fn [] (next-page data)))))]]]]]))
-(defn home-stories []
+(def sources
+  [{:name "Lobsters"
+    :feeds [{:title "Hottest" :url "/feeds/lobsters/hot" :id "hot" :icon "power-profile-performance-symbolic"}
+            {:title "Active" :url "/feeds/lobsters/newest" :id "active" :icon "audio-speakers-symbolic"}]}
+   {:name "Hacker News"
+    :feeds [{:title "Top" :url "/feeds/hn/top" :id "top" :icon "starred-symbolic"}
+            {:title "New" :url "/feeds/hn/newest" :id "new" :icon "document-new-symbolic"}
+            {:title "Best" :url "/feeds/hn/best" :id "best" :icon "emoji-flags-symbolic"}]}])
+
+(defn build-view-stack [source]
   (let [stack (Adw/ViewStack.)]
-    (doto (.add_titled stack
-                       (build-ui (stories-list-view "/feeds/lobsters/hot"))
-                       "hottest"
-                       "Hottest")
-      (.set_icon_name "power-profile-performance-symbolic"))
-    (doto (.add_titled stack
-                       (build-ui (stories-list-view "/feeds/lobsters/newest"))
-                       "active" "Active")
-      (.set_icon_name "audio-speakers-symbolic"))
-    (swap! state/global-widgets assoc :home-stories stack)
+    (doseq [{:keys [title url id icon]} (:feeds source)]
+      (doto (.add_titled stack
+                         (build-ui (stories-list-view url))
+                         id
+                         title)
+        (.set_icon_name icon)))
+    stack))
+
+(defn home-stories []
+  (let [content-bin (Adw/Bin.)
+        view-switcher (doto (Adw/ViewSwitcher.)
+                        (.set_policy Adw/ViewSwitcherPolicy.WIDE))
+        initial-stack (build-view-stack (first sources))
+        dropdown (Gtk/DropDown.
+                  #js {:model (Gtk/StringList.
+                               #js {:strings #js ["Lobsters" "Hacker News"]})})]
+    (.set_child content-bin initial-stack)
+    (.set_stack view-switcher initial-stack)
+    (.connect dropdown "notify::selected"
+              (fn [_]
+                (let [idx (.get_selected dropdown)
+                      source (nth sources idx)
+                      new-stack (build-view-stack source)]
+                  (.set_child content-bin new-stack)
+                  (.set_stack view-switcher new-stack))))
+    (swap! state/global-widgets assoc
+           :home-view-switcher view-switcher
+           :home-dropdown dropdown)
     [Gtk/Box
      ::rollui/ref-in [global-widgets :home]
      :orientation Gtk/Orientation.VERTICAL
      :.append
-     stack]))
+     content-bin]))

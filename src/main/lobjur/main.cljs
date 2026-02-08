@@ -41,15 +41,14 @@
            :init
            (-> state
                (push-view (home-stories))
+               (assoc :header-start (:home-dropdown @state/global-widgets))
                (assoc :header-end [Gtk/MenuButton
                                    :icon-name "open-menu-symbolic"
                                    :menu-model (doto (Gio/Menu.)
                                                  (.append "About" "win.about")
                                                  (.append "Donate" "win.donate"))])
                (assoc :title-widget
-                      [Adw/ViewSwitcher
-                       :policy Adw/ViewSwitcherPolicy.WIDE
-                       :stack (:home-stories @state/global-widgets)]))
+                      (:home-view-switcher @state/global-widgets)))
            :push-user
            (push-titled-view state (user/user-view payload) payload)
            :push-user-stories
