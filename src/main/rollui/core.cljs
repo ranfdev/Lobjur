@@ -7,7 +7,7 @@
     p))
 
 (defn update-prop-once [w k vs]
-  (when (not= vs ::abort)
+  (when (and (not= vs ::abort) (some? vs))
     (case (first (name k))
       "." (js-invoke w (subs (name k) 1) (build-property vs))
       "$" (.connect w (subs (name k) 1) vs)

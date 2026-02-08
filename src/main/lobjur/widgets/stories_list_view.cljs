@@ -14,64 +14,71 @@
 
 (defn story-item-widget
   [{:keys [title url score created_at comment_count tags submitter] :as story}]
-  [Gtk/Box
-   :orientation Gtk/Orientation.HORIZONTAL
-   :margin-top 4
-   :margin-bottom 4
-   :margin-start 8
-   :margin-end 4
-   :.append
-   (list
-    (upvote-btn score)
+  (let [has-url? (not-empty url)]
     [Gtk/Box
-     :orientation Gtk/Orientation.VERTICAL
+     :orientation Gtk/Orientation.HORIZONTAL
+     :margin-top 4
+     :margin-bottom 4
+     :margin-start 8
+     :margin-end 4
      :.append
      (list
-      [Gtk/LinkButton
-       :hexpand true
-       :uri url
-       :child
-       [Gtk/Label :label title :wrap true :xalign 0.0]
-       :css_classes #js ["small" "button" "heading" "flat"]]
-      [Gtk/FlowBox
-       :spacing 8
-       :selection-mode Gtk/SelectionMode.NONE
-       :.append
-       (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
-         [Gtk/Button
-          :.add_css_class (list "small" "button" "flat" "caption")
-          :halign Gtk/Align.START
-          :$clicked #(state/send [:push-domain-stories host])
-          :label host])
-       :.append
-       (for [t tags]
-         [Gtk/Button
-          :$clicked #(state/send [:push-tagged-stories t])
-          :label t
-          :valign Gtk/Align.CENTER
-          :.add_css_class (list "small" "flat" "tag" "caption")])]
+      (upvote-btn score)
       [Gtk/Box
-       :spacing 2
-       :halign Gtk/Align.START
+       :orientation Gtk/Orientation.VERTICAL
        :.append
        (list
-        [Gtk/Button
-         :$clicked #(state/send [:push-user submitter])
-         :label submitter
-         :css_classes #js ["small" "button" "flat" "body"]]
-        [Gtk/Label
-         :label (time-ago created_at)])])]
-    [Gtk/Button
-     :valign Gtk/Align.CENTER
-     :css_classes #js ["button" "flat"]
-     :$clicked #(state/send [:push-story story])
-     :child
-     [Gtk/Overlay
-      :child
-      [Gtk/Image :pixel_size 28 :opacity 0.5 :icon_name "user-idle-symbolic"]
-      :.add_overlay [Gtk/Label
-                     :css_classes #js ["caption-heading" "numeric"]
-                     :label (str comment_count)]]])])
+        (if has-url?
+          [Gtk/LinkButton
+           :hexpand true
+           :uri url
+           :child
+           [Gtk/Label :label title :wrap true :xalign 0.0]
+           :css_classes #js ["small" "button" "heading" "flat"]]
+          [Gtk/Label :label title :wrap true :xalign 0.0
+           :hexpand true
+           :css_classes #js ["heading"]
+           :margin-start 8 :margin-top 4])
+        [Gtk/FlowBox
+         :spacing 8
+         :selection-mode Gtk/SelectionMode.NONE
+         :.append
+         (when has-url?
+           (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
+             [Gtk/Button
+              :.add_css_class (list "small" "button" "flat" "caption")
+              :halign Gtk/Align.START
+              :$clicked #(state/send [:push-domain-stories host])
+              :label host]))
+         :.append
+         (for [t tags]
+           [Gtk/Button
+            :$clicked #(state/send [:push-tagged-stories t])
+            :label t
+            :valign Gtk/Align.CENTER
+            :.add_css_class (list "small" "flat" "tag" "caption")])]
+        [Gtk/Box
+         :spacing 2
+         :halign Gtk/Align.START
+         :.append
+         (list
+          [Gtk/Button
+           :$clicked #(state/send [:push-user submitter])
+           :label submitter
+           :css_classes #js ["small" "button" "flat" "body"]]
+          [Gtk/Label
+           :label (time-ago created_at)])])]
+      [Gtk/Button
+       :valign Gtk/Align.CENTER
+       :css_classes #js ["button" "flat"]
+       :$clicked #(state/send [:push-story story])
+       :child
+       [Gtk/Overlay
+        :child
+        [Gtk/Image :pixel_size 28 :opacity 0.5 :icon_name "user-idle-symbolic"]
+        :.add_overlay [Gtk/Label
+                       :css_classes #js ["caption-heading" "numeric"]
+                       :label (str comment_count)]]])]))
 
 (defn stories-list-view [initial-url]
   (let [res (r/resource #(api/GET initial-url))]

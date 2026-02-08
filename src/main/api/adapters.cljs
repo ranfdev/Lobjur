@@ -56,7 +56,7 @@
      :submitter     (:submitter_user story)
      :tags          (:tags story)
      :_links        (hal/story-links id
-                                     :external-url (:url story)
+                                     :external-url (not-empty (:url story))
                                      :author (:submitter_user story))}))
 
 (defn- normalize-lobster-comment
@@ -87,7 +87,7 @@
      :submitter     (:by story)
      :tags          []
      :_links        (hal/story-links id
-                                     :external-url (:url story)
+                                     :external-url (not-empty (:url story))
                                      :author (:by story))}))
 
 (defn- normalize-hn-comment
@@ -147,7 +147,7 @@
                  (let [id (make-story-id :lobsters (:short_id story))]
                    (hal/resource
                     (merge (hal/story-links id
-                                            :external-url (:url story)
+                                            :external-url (not-empty (:url story))
                                             :author (:submitter_user story))
                            {:feed (hal/link "/feeds/lobsters")})
                     {:id            id
@@ -276,7 +276,7 @@
                  (let [id (make-story-id :hn (:id story))]
                    (hal/resource
                     (merge (hal/story-links id
-                                            :external-url (:url story)
+                                            :external-url (not-empty (:url story))
                                             :author (:by story))
                            {:feed (hal/link "/feeds/hn")})
                     {:id            id
