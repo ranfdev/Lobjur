@@ -173,9 +173,9 @@
     :feeds [{:title "Hottest" :url "/feeds/lobsters/hot" :id "hot" :icon "power-profile-performance-symbolic"}
             {:title "Active" :url "/feeds/lobsters/newest" :id "active" :icon "audio-speakers-symbolic"}]}
    {:name "Hacker News"
-    :feeds [{:title "Top" :url "/feeds/hn/top" :id "top" :icon "starred-symbolic"}
-            {:title "New" :url "/feeds/hn/newest" :id "new" :icon "document-new-symbolic"}
-            {:title "Best" :url "/feeds/hn/best" :id "best" :icon "emoji-flags-symbolic"}]}])
+    :feeds [{:title "Top" :url "/feeds/hackernews/top" :id "top" :icon "starred-symbolic"}
+            {:title "New" :url "/feeds/hackernews/newest" :id "new" :icon "document-new-symbolic"}
+            {:title "Best" :url "/feeds/hackernews/best" :id "best" :icon "emoji-flags-symbolic"}]}])
 
 (defn build-view-stack [source]
   (let [stack (Adw/ViewStack.)]

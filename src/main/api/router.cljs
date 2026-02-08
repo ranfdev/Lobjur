@@ -27,10 +27,10 @@
                :newest (hal/link "/feeds/lobsters/newest")
                :tags   (hal/link "/feeds/lobsters/tags")}}
      {:name "Hacker News"
-      :_links {:self   (hal/link "/feeds/hn")
-               :top    (hal/link "/feeds/hn/top")
-               :newest (hal/link "/feeds/hn/newest")
-               :best   (hal/link "/feeds/hn/best")}}])))
+      :_links {:self   (hal/link "/feeds/hackernews")
+               :top    (hal/link "/feeds/hackernews/top")
+               :newest (hal/link "/feeds/hackernews/newest")
+               :best   (hal/link "/feeds/hackernews/best")}}])))
 
 ;; --- Composed application handler ---
 

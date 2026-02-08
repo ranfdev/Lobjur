@@ -13,7 +13,7 @@
   (let [native-id (:id story)
         url (:url story)]
     {:id            native-id
-     :provider      "hn"
+     :provider      "hackernews"
      :title         (:title story)
      :url           url
      :score         (:score story)
@@ -23,7 +23,7 @@
                           (.toISOString)))
      :submitter     (:by story)
      :tags          []
-     :_links        (hal/story-links "hn" native-id
+     :_links        (hal/story-links "hackernews" native-id
                                      :external-url (not-empty url)
                                      :author (:by story))}))
 
@@ -31,23 +31,23 @@
   "Create a placeholder story with just an ID and self-link."
   [hn-id]
   {:id         hn-id
-   :provider   "hn"
+   :provider   "hackernews"
    :_placeholder true
-   :_links     {:self (hal/link (str "/hn/stories/" hn-id))}})
+   :_links     {:self (hal/link (str "/hackernews/stories/" hn-id))}})
 
 (defn- normalize-hn-comment
   "Normalize a HN comment to HAL format (shallow, no embedded children)."
   [comment]
   (let [id (:id comment)]
     {:id         id
-     :provider   "hn"
+     :provider   "hackernews"
      :text       (html->text (:text comment))
      :created_at (when (:time comment)
                    (-> (js/Date. (* (:time comment) 1000))
                        (.toISOString)))
      :author     (:by comment)
      :score      0
-     :_links     (hal/comment-links "hn" id
+     :_links     (hal/comment-links "hackernews" id
                                     :author (:by comment)
                                     :replies (seq (:kids comment)))}))
 
@@ -64,10 +64,10 @@
 (defn- source-index-handler [_request]
   (js/Promise.resolve
    (hal/resource
-    {:self   (hal/link "/feeds/hn")
-     :top    (hal/link "/feeds/hn/top")
-     :newest (hal/link "/feeds/hn/newest")
-     :best   (hal/link "/feeds/hn/best")}
+    {:self   (hal/link "/feeds/hackernews")
+     :top    (hal/link "/feeds/hackernews/top")
+     :newest (hal/link "/feeds/hackernews/newest")
+     :best   (hal/link "/feeds/hackernews/best")}
     {:name        "Hacker News"
      :description "Y Combinator's tech news aggregator"})))
 
@@ -79,7 +79,7 @@
                  "newest" hn/new-story-ids
                  "best"   hn/best-story-ids
                  hn/top-story-ids)
-        base-href (str "/feeds/hn/" feed)
+        base-href (str "/feeds/hackernews/" feed)
         query-params (dissoc query :page)]
     (-> (ids-fn)
         (.then (fn [ids]
@@ -97,12 +97,12 @@
       (.then (fn [story]
                (let [id (:id story)]
                  (hal/resource
-                  (merge (hal/story-links "hn" id
+                  (merge (hal/story-links "hackernews" id
                                           :external-url (not-empty (:url story))
                                           :author (:by story))
-                         {:feed (hal/link "/feeds/hn")})
+                         {:feed (hal/link "/feeds/hackernews")})
                   {:id            id
-                   :provider      "hn"
+                   :provider      "hackernews"
                    :title         (:title story)
                    :url           (:url story)
                    :score         (:score story)
@@ -120,11 +120,11 @@
                (let [kid-ids (or (:kids comment) [])
                      comment-id (:id comment)]
                  (if (empty? kid-ids)
-                   (hal/collection (str "/hn/comments/" comment-id "/replies") :replies [])
+                   (hal/collection (str "/hackernews/comments/" comment-id "/replies") :replies [])
                    (-> (js/Promise.all (mapv hn/item kid-ids))
                        (.then (fn [kids]
                                 (hal/collection
-                                 (str "/hn/comments/" comment-id "/replies") :replies
+                                 (str "/hackernews/comments/" comment-id "/replies") :replies
                                  (mapv normalize-hn-comment (filter-comments kids))))))))))))
 
 (defn- comments-handler [{:keys [params]}]
@@ -134,14 +134,14 @@
                      story-id (:id story)]
                  (if (empty? kid-ids)
                    (hal/resource
-                    {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
-                     :story (hal/link (str "/hn/stories/" story-id))}
+                    {:self  (hal/link (str "/hackernews/stories/" story-id "/comments"))
+                     :story (hal/link (str "/hackernews/stories/" story-id))}
                     {} {:comments []})
                    (-> (js/Promise.all (mapv hn/item kid-ids))
                        (.then (fn [kids]
                                 (hal/resource
-                                 {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
-                                  :story (hal/link (str "/hn/stories/" story-id))}
+                                 {:self  (hal/link (str "/hackernews/stories/" story-id "/comments"))
+                                  :story (hal/link (str "/hackernews/stories/" story-id))}
                                  {}
                                  {:comments (mapv normalize-hn-comment (filter-comments kids))}))))))))))
 (defn- user-handler [{:keys [params]}]
@@ -149,10 +149,10 @@
     (-> (hn/user username)
         (.then (fn [user]
                  (hal/resource
-                  (assoc (hal/user-links "hn" username)
-                         :submitted (hal/link (str "/hn/users/" username "/stories")))
+                  (assoc (hal/user-links "hackernews" username)
+                         :submitted (hal/link (str "/hackernews/users/" username "/stories")))
                   {:username   (:id user)
-                   :provider   "hn"
+                   :provider   "hackernews"
                    :created_at (when (:created user)
                                  (-> (js/Date. (* (:created user) 1000))
                                      (.toISOString)))
@@ -162,7 +162,7 @@
 (defn- user-stories-handler [{:keys [params query]}]
   (let [username (:username params)
         page (js/parseInt (or (:page query) "1") 10)
-        base-href (str "/hn/users/" username "/stories")
+        base-href (str "/hackernews/users/" username "/stories")
         query-params (dissoc query :page)]
     (-> (hn/user username)
         (.then (fn [u]
@@ -180,12 +180,12 @@
 
 (def handler
   (r/routes
-   (r/mount "/feeds/hn"
+   (r/mount "/feeds/hackernews"
      (r/routes
        (r/route "/"       source-index-handler)
        (r/route "/{feed}" feed-handler)))
 
-   (r/mount "/hn"
+   (r/mount "/hackernews"
      (r/routes
        (r/route "/stories/{id}"              story-handler)
        (r/route "/stories/{id}/comments"     comments-handler)

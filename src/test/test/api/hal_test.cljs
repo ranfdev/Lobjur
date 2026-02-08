@@ -20,15 +20,15 @@
 
 (deftest test-paginated-with-query-params
   (testing "Pagination with existing query parameters"
-    (let [resource {:_links {:self {:href "in-process://api/users/jcs/stories?source=hn"}}
+    (let [resource {:_links {:self {:href "in-process://api/users/jcs/stories?source=hackernews"}}
                     :_embedded {:stories []}}
           result (hal/paginated resource "/users/jcs/stories" 1
                                 :has-next true
                                 :has-prev false
-                                :query-params {:source "hn"})]
+                                :query-params {:source "hackernews"})]
       
       (testing "should preserve source parameter in next link"
-        (is (= "in-process://api/users/jcs/stories?source=hn&page=2"
+        (is (= "in-process://api/users/jcs/stories?source=hackernews&page=2"
                (get-in result [:_links :next :href]))))
       
       (testing "should not add prev link when has-prev is false"
@@ -57,9 +57,9 @@
 
 (deftest test-paginated-first-page
   (testing "Pagination on first page"
-    (let [resource {:_links {:self {:href "in-process://api/feeds/hn/top"}}
+    (let [resource {:_links {:self {:href "in-process://api/feeds/hackernews/top"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/hn/top" 1
+          result (hal/paginated resource "/feeds/hackernews/top" 1
                                 :has-next true
                                 :has-prev false)]
       
@@ -67,7 +67,7 @@
         (is (nil? (get-in result [:_links :prev]))))
       
       (testing "should add next link"
-        (is (= "in-process://api/feeds/hn/top?page=2"
+        (is (= "in-process://api/feeds/hackernews/top?page=2"
                (get-in result [:_links :next :href])))))))
 
 (deftest test-paginated-last-page
