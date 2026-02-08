@@ -4,4 +4,9 @@
  {:app {:target shadow-cljs-gjs-target.core
         :output-dir "./build/jslibs"
         :output-to "./build/app.js"
-        :main lobjur.main/main}}}
+        :main lobjur.main/main}
+  :test {:target shadow-cljs-gjs-target.core
+         :output-dir "./build/test-jslibs"
+         :output-to "./build/test.js"
+         :main test.runner/main
+         :ns-regexp "test\\..*"}}}
