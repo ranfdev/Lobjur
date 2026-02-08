@@ -126,18 +126,20 @@
           :$clicked #(state/send [:push-tagged-stories t])
           :.add_css_class (list "small" "flat" "tag" "caption")])]
       :.append
-      (rv/resource-widget
-       res :comments
-       {:on-ready
-        (fn [comments]
-          (let [flat-comments (flatten-comments comments)]
-            (if (> (count flat-comments) 0)
-              [Gtk/ScrolledWindow
-               :propagate-natural-height true
-               :vexpand true
-               :child
-               (comments-list-view flat-comments)]
-              [Adw/StatusPage
-               :title "No comments available"
-               :icon-name "user-invisible-symbolic"
-               :.add_css_class "compact"])))})]]))
+      [Adw/Bin
+       :child
+       (rv/resource-widget
+        res :comments
+        {:on-ready
+         (fn [comments]
+           (let [flat-comments (flatten-comments comments)]
+             (if (> (count flat-comments) 0)
+               [Gtk/ScrolledWindow
+                :propagate-natural-height true
+                :vexpand true
+                :child
+                (comments-list-view flat-comments)]
+               [Adw/StatusPage
+                :title "No comments available"
+                :icon-name "user-invisible-symbolic"
+                :.add_css_class "compact"])))})]]]))
