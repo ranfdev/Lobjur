@@ -72,7 +72,12 @@
                      :label (str comment_count)]]])])
 
 (defn stories-list-view [initial-url]
-  (let [hal-response (atom nil)]
+  (let [hal-response (atom nil)
+        ;; Perform initial fetch immediately, outside the derived-atom
+        _ (-> (api/GET initial-url)
+              (.then (fn [resp]
+                       (println "Fetched stories response:" resp)
+                       (reset! hal-response resp))))]
     [Gtk/ScrolledWindow
      :.add_css_class "background"
      :propagate_natural_height true
@@ -98,13 +103,10 @@
             :height-request 48
             :child
             (-> (if response
-                  (js/Promise.resolve response)
-                  (api/GET initial-url))
-                (.then (fn [resp]
-                         (reset! hal-response resp)
-                         ;; Use fetch-collection to properly follow HATEOAS:
-                         ;; checks _embedded first, falls back to fetching link if needed
-                         (fetch-collection resp :stories)))
+                  ;; Use fetch-collection to properly follow HATEOAS:
+                  ;; checks _embedded first, falls back to fetching link if needed
+                  (fetch-collection response :stories)
+                  (js/Promise.resolve []))
                 (.then
                  (fn [stories]
                    (if (> (count stories) 0)
