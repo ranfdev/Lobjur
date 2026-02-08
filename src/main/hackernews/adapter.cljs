@@ -2,7 +2,8 @@
   (:require
    [api.protocol :as proto]
    [api.hal :as hal]
-   [hackernews.core :as hn]))
+   [hackernews.core :as hn]
+   [lobjur.utils.common :refer [html->text]]))
 
 (defn- normalize-hn-story
   "Normalize a HN story to HAL format."
@@ -27,7 +28,7 @@
   [comment]
   (let [id (str "hn-c-" (:id comment))]
     {:id         id
-     :text       (:text comment)
+     :text       (html->text (:text comment))
      :created_at (when (:time comment)
                    (-> (js/Date. (* (:time comment) 1000))
                        (.toISOString)))

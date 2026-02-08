@@ -2,7 +2,8 @@
   (:require
    [api.protocol :as proto]
    [api.hal :as hal]
-   [lobster.core :as lobster]))
+   [lobster.core :as lobster]
+   [lobjur.utils.common :refer [html->text]]))
 
 (defn- normalize-lobster-story
   "Normalize a Lobsters story to HAL format."
@@ -25,7 +26,7 @@
   [comment]
   (let [id (str "lobsters-c-" (:short_id comment))]
     {:id         id
-     :text       (:comment comment)
+     :text       (html->text (:comment comment))
      :created_at (:created_at comment)
      :author     (:commenting_user comment)
      :score      (:score comment)
