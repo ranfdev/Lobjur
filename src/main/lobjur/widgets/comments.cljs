@@ -46,7 +46,7 @@
    (mapcat (fn [comment]
              (cons
               (assoc comment :indent_level level)
-              (when-let [replies (get-in comment [:_embedded :replies])]
+              (when-let [replies (hal-collection comment :replies)]
                 (flatten-comments replies (inc level)))))
            comments)))
 

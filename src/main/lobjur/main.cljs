@@ -54,13 +54,11 @@
            (push-titled-view state (user/user-view payload) payload)
            :push-user-stories
            (push-titled-view state
-                             (stories-list-view (fn [& {:keys [page]}]
-                                                 (api/GET (str "/users/" payload "/stories?page=" page))))
+                             (stories-list-view (str "/users/" payload "/stories"))
                              payload)
            :push-domain-stories
            (push-titled-view state
-                             (stories-list-view (fn [& {:keys [page]}]
-                                                 (api/GET (str "/domains/" payload "/stories?page=" page))))
+                             (stories-list-view (str "/domains/" payload "/stories"))
                              payload)
            :push-story
            (-> state
@@ -72,8 +70,7 @@
                        :css_classes #js ["image-button"]]))
            :push-tagged-stories
            (push-titled-view state
-                             (stories-list-view (fn [& {:keys [page]}]
-                                                 (api/GET (str "/tags/" payload "/stories?source=lobsters&page=" page))))
+                             (stories-list-view (str "/tags/" payload "/stories?source=lobsters"))
                              payload)
            :pop-main-stack
            (let [prev-state (:prev-state state)]

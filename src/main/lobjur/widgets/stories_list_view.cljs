@@ -6,7 +6,7 @@
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
-   [api.helpers :refer [hal-collection external-url]]
+   [api.helpers :refer [hal-collection external-url next-page prev-page has-relation?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [lobster.core :refer [base-url]]))
 
@@ -71,8 +71,8 @@
                      :css_classes #js ["caption-heading" "numeric"]
                      :label (str comment_count)]]])])
 
-(defn stories-list-view [provider]
-  (let [page (atom 1)]
+(defn stories-list-view [initial-url]
+  (let [hal-response (atom nil)]
     [Gtk/ScrolledWindow
      :.add_css_class "background"
      :propagate_natural_height true
@@ -91,24 +91,28 @@
        [Adw/Bin
         :child
         (derived-atom
-         [page]
+         [hal-response]
          :stories
-         (fn [p]
-           [Adw/Bin ;; quickly swaps the widget when the atom changes
+         (fn [response]
+           [Adw/Bin
             :height-request 48
             :child
-            (-> (provider :page p) ;; load the data and display the new listbox
+            (-> (if response
+                  (js/Promise.resolve response)
+                  (api/GET initial-url))
                 (.then
-                 #(let [stories (hal-collection % :stories)]
-                    (if (> (count stories) 0)
-                      [Gtk/ListBox
-                       :.add_css_class "boxed-list"
-                       :.append
-                       (map story-item-widget stories)]
-                      [Adw/StatusPage
-                       :icon_name "mail-read-symbolic"
-                       :title
-                       "No Stories Available"]))))]))]
+                 (fn [resp]
+                   (reset! hal-response resp)
+                   (let [stories (hal-collection resp :stories)]
+                     (if (> (count stories) 0)
+                       [Gtk/ListBox
+                        :.add_css_class "boxed-list"
+                        :.append
+                        (map story-item-widget stories)]
+                       [Adw/StatusPage
+                        :icon_name "mail-read-symbolic"
+                        :title
+                        "No Stories Available"])))))]))]
        :.append
        [Gtk/Box
         :hexpand true
@@ -117,31 +121,30 @@
         [Gtk/Button
          :halign Gtk/Align.START
          :label "Previous"
-         :sensitive (derived-atom [page] :prev-story-page #(> % 1))
-         :$clicked #(swap! page dec)]
+         :sensitive (derived-atom [hal-response] :prev-story-page #(and % (has-relation? % :prev)))
+         :$clicked #(when-let [resp @hal-response]
+                      (-> (prev-page resp)
+                          (.then (fn [new-resp] (reset! hal-response new-resp)))))]
         :.append
-        [Gtk/Label
-         :label
-         (derived-atom [page] :stories-page-label #(str "Page " %))]
+        [Gtk/Label :label "•"]
         :.append
         [Gtk/Button
          :halign Gtk/Align.END
          :label "Next"
-         :$clicked #(swap! page inc)]]]]]))
+         :sensitive (derived-atom [hal-response] :next-story-page #(and % (has-relation? % :next)))
+         :$clicked #(when-let [resp @hal-response]
+                      (-> (next-page resp)
+                          (.then (fn [new-resp] (reset! hal-response new-resp)))))]]]]])) ; 6 closing brackets
 
 (defn home-stories []
-  (let [stack (Adw/ViewStack.)
-        hottest-provider (fn [& {:keys [page]}]
-                          (api/GET (str "/feeds/lobsters/hot?page=" page)))
-        active-provider (fn [& {:keys [page]}]
-                         (api/GET (str "/feeds/lobsters/newest?page=" page)))]
+  (let [stack (Adw/ViewStack.)]
     (doto (.add_titled stack
-                       (build-ui (stories-list-view hottest-provider))
+                       (build-ui (stories-list-view "/feeds/lobsters/hot"))
                        "hottest"
                        "Hottest")
       (.set_icon_name "power-profile-performance-symbolic"))
     (doto (.add_titled stack
-                       (build-ui (stories-list-view active-provider))
+                       (build-ui (stories-list-view "/feeds/lobsters/newest"))
                        "active" "Active")
       (.set_icon_name "audio-speakers-symbolic"))
     (swap! state/global-widgets assoc :home-stories stack)
@@ -150,4 +153,3 @@
      :orientation Gtk/Orientation.VERTICAL
      :.append
      stack]))
-
