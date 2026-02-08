@@ -1,8 +1,8 @@
 (ns lobjur.utils.http
   (:refer-clojure :exclude [get update])
   (:require
-   ["gi://Soup$default" :as Soup]
-   ["gi://Gio$default" :as Gio]))
+   ["gjs.gi.Soup" :as Soup]
+   ["gjs.gi.Gio" :as Gio]))
 
 (js* "~{}._promisify(~{}.Session.prototype, 'send_and_read_async', 'send_and_read_finish')", Gio, Soup)
 

@@ -1,11 +1,11 @@
 (ns lobjur.widgets.user
   (:require
-   ["gi://Adw$default" :as Adw]
-   ["gi://Gdk$default" :as Gdk]
-   ["gi://GdkPixbuf$default" :as Pixbuf]
-   ["gi://Gio$default" :as Gio]
-   ["gi://Gtk$default" :as Gtk]
-   ["gi://Pango$default" :as Pango]
+   ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Gdk" :as Gdk]
+   ["gjs.gi.GdkPixbuf" :as Pixbuf]
+   ["gjs.gi.Gio" :as Gio]
+   ["gjs.gi.Gtk" :as Gtk]
+   ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
    [lobster.core :as lobster]))

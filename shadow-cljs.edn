@@ -1,8 +1,7 @@
 ;; shadow-cljs configuration
 {:deps true
  :builds
- {:app {:target :esm 
-        :runtime :node
+ {:app {:target shadow-cljs-gjs-target.core
         :output-dir "./build/jslibs"
-        :js-options {:js-provider :import}
-        :modules {:main {:exports {main lobjur.main/main}}}}}}
+        :output-to "./build/app.js"
+        :main lobjur.main/main}}}

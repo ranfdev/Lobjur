@@ -1,7 +1,7 @@
 (ns lobjur.widgets.window
   (:require
-   ["gi://Adw$default" :as Adw]
-   ["gi://Gtk$default" :as Gtk]
+   ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Gtk" :as Gtk]
    [lobjur.state :as state :refer [global-widgets]]
    [rollui.core :as rollui :refer [derived-atom] :refer-macros [defc]]))
 

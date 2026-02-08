@@ -1,16 +1,17 @@
 (ns lobjur.main
   (:require
-   ["gi://Adw$default" :as Adw]
-   ["gi://Gdk$default" :as Gdk]
-   ["gi://Gtk$default" :as Gtk]
-   ["gi://Gio$default" :as Gio]
+   ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Gdk" :as Gdk]
+   ["gjs.gi.Gtk" :as Gtk]
+   ["gjs.gi.Gio" :as Gio]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
    [lobster.core :as lobster]
-   [rollui.core :refer [build-ui]]))
+   [rollui.core :refer [build-ui]]
+   [api.router :as api]))
 
 (def back-btn [Gtk/Button
                :$clicked #(state/send [:pop-main-stack])
