@@ -129,7 +129,8 @@
                      "hot"    lobster/hottest
                      "newest" lobster/active
                      lobster/hottest)
-          base-href (str "/feeds/lobsters/" feed-type)]
+          base-href (str "/feeds/lobsters/" feed-type)
+          query-params (dissoc query :page)]
       (-> (fetch-fn :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -137,7 +138,8 @@
                         (mapv normalize-lobster-story stories))
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 20)
-                                      :has-prev (> page 1))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params)))))))
   
   (fetch-story [_ native-id]
     (-> (lobster/story native-id)
@@ -181,7 +183,8 @@
   
   (fetch-user-stories [_ username query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          base-href (str "/users/" username "/stories")]
+          base-href (str "/users/" username "/stories")
+          query-params (dissoc query :page)]
       (-> (lobster/user-stories-newest username :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -189,7 +192,8 @@
                         (mapv normalize-lobster-story stories))
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 20)
-                                      :has-prev (> page 1))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params)))))))
   
   (fetch-tags [_]
     (js/Promise.resolve
@@ -202,7 +206,8 @@
   
   (fetch-tag-stories [_ tag query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          base-href (str "/tags/" tag "/stories")]
+          base-href (str "/tags/" tag "/stories")
+          query-params (dissoc query :page)]
       (-> (lobster/tagged tag :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -211,11 +216,13 @@
                         :links {:tag (hal/link (str "/tags/" tag))})
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 20)
-                                      :has-prev (> page 1))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params)))))))
   
   (fetch-domain-stories [_ domain query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          base-href (str "/domains/" domain "/stories")]
+          base-href (str "/domains/" domain "/stories")
+          query-params (dissoc query :page)]
       (-> (lobster/domain-stories domain :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -223,7 +230,8 @@
                         (mapv normalize-lobster-story stories))
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 20)
-                                      :has-prev (> page 1)))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params))))))))
 
 ;; HackerNews Adapter
 
@@ -250,7 +258,8 @@
                      "newest" hn/new-stories
                      "best"   hn/best-stories
                      hn/top-stories)
-          base-href (str "/feeds/hn/" feed-type)]
+          base-href (str "/feeds/hn/" feed-type)
+          query-params (dissoc query :page)]
       (-> (fetch-fn :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -258,7 +267,8 @@
                         (mapv normalize-hn-story stories))
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 30)
-                                      :has-prev (> page 1))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params)))))))
   
   (fetch-story [_ native-id]
     (-> (hn/item native-id)
@@ -306,7 +316,8 @@
   
   (fetch-user-stories [_ username query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          base-href (str "/users/" username "/stories")]
+          base-href (str "/users/" username "/stories")
+          query-params (dissoc query :page)]
       (-> (hn/user-stories username :page page)
           (.then (fn [stories]
                    (-> (hal/collection
@@ -314,7 +325,8 @@
                         (mapv normalize-hn-story stories))
                        (hal/paginated base-href page 
                                       :has-next (>= (count stories) 30)
-                                      :has-prev (> page 1))))))))
+                                      :has-prev (> page 1)
+                                      :query-params query-params)))))))
   
   (fetch-tags [_]
     (js/Promise.reject (js/Error. "HackerNews does not support tags")))

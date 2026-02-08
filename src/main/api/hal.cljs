@@ -68,9 +68,20 @@
    :stories (link (str "/users/" username "/stories"))})
 
 (defn paginated
-  "Add pagination links to a resource."
-  [resource base-href page & {:keys [has-next has-prev]}]
-  (let [add-link (fn [r rel href] (assoc-in r [:_links rel] (link href)))]
+  "Add pagination links to a resource, preserving existing query parameters.
+   
+   Parameters:
+   - resource: The HAL resource to add pagination links to
+   - base-href: The base URL path (without query params)
+   - page: Current page number
+   - query-params: (optional) Map of query parameters to preserve
+   - has-next: Whether there is a next page
+   - has-prev: Whether there is a previous page"
+  [resource base-href page & {:keys [has-next has-prev query-params]}]
+  (let [add-link (fn [r rel page-num]
+                   (let [params (assoc (or query-params {}) :page page-num)
+                         href (url/make-url :in-process base-href params)]
+                     (assoc-in r [:_links rel] {:href href})))]
     (cond-> resource
-      has-prev (add-link :prev (str base-href "?page=" (dec page)))
-      has-next (add-link :next (str base-href "?page=" (inc page))))))
+      has-prev (add-link :prev (dec page))
+      has-next (add-link :next (inc page)))))
