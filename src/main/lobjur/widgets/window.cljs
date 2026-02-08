@@ -18,7 +18,8 @@
    :title_widget [Adw/Bin
                   :child (derived-atom [state/state]
                                        :sidebar-title-widget
-                                       #(get % :sidebar-title-widget nil))]])
+                                       #(or (get % :sidebar-title-widget)
+                                            [Adw/WindowTitle :title "Lobjur"]))]])
 
 (defn content-header-bar []
   [Adw/HeaderBar
@@ -40,6 +41,9 @@
     :child
     [Adw/ToolbarView
      :.add_top_bar (sidebar-header-bar)
+     :.add_bottom_bar [Adw/ViewSwitcherBar
+                       ::rollui/ref-in [global-widgets :sidebar-view-switcher-bar]
+                       :reveal false]
      :content [Adw/NavigationView
                ::rollui/ref-in [global-widgets :sidebar-nav-view]
                :.add

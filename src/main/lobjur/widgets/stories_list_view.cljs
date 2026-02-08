@@ -190,13 +190,17 @@
                                #js {:strings #js ["Lobsters" "Hacker News"]})})]
     (.set_child content-bin initial-stack)
     (.set_stack view-switcher initial-stack)
+    (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+      (.set_stack ^js bar initial-stack))
     (.connect dropdown "notify::selected"
               (fn [_]
                 (let [idx (.get_selected dropdown)
                       source (nth sources idx)
                       new-stack (build-view-stack source)]
                   (.set_child content-bin new-stack)
-                  (.set_stack view-switcher new-stack))))
+                  (.set_stack view-switcher new-stack)
+                  (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                    (.set_stack ^js bar new-stack)))))
     (swap! state/global-widgets assoc
            :home-view-switcher view-switcher
            :home-dropdown dropdown)

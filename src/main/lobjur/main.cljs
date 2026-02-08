@@ -148,8 +148,17 @@
                  500.0
                  Adw/LengthUnit.SP))
           split-view (:split-view @state/global-widgets)]
-      (.connect bp "apply" (fn [_] (.set_collapsed ^js split-view true)))
-      (.connect bp "unapply" (fn [_] (.set_collapsed ^js split-view false)))
+      (.connect bp "apply" (fn [_]
+                             (.set_collapsed ^js split-view true)
+                             (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                               (.set_reveal ^js bar true))
+                             (swap! state/state assoc :sidebar-title-widget nil)))
+      (.connect bp "unapply" (fn [_]
+                               (.set_collapsed ^js split-view false)
+                               (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                                 (.set_reveal ^js bar false))
+                               (swap! state/state assoc :sidebar-title-widget
+                                      (:home-view-switcher @state/global-widgets))))
       (.add_breakpoint win bp))
     (println "Window created:" win)
     (doto win
