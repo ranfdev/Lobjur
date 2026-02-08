@@ -50,7 +50,7 @@
            (let [sidebar-view (build-ui (home-stories))]
              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
              (-> state
-                 (assoc :sidebar-header-start (:home-dropdown @state/global-widgets))
+                 (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
                  (assoc :sidebar-header-end [Gtk/MenuButton
                                              :icon-name "open-menu-symbolic"
                                              :menu-model (doto (Gio/Menu.)

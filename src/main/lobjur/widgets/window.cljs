@@ -7,15 +7,15 @@
 
 (defn sidebar-header-bar []
   [Adw/HeaderBar
-   :.pack_start [Adw/Bin
-                 :child (derived-atom [state/state]
-                                      :sidebar-header-start
-                                      #(get % :sidebar-header-start nil))]
    :.pack_end [Adw/Bin
                :child (derived-atom [state/state]
                                     :sidebar-header-end
                                     #(get % :sidebar-header-end nil))]
-   :title_widget [Adw/WindowTitle :title "Lobjur"]])
+   :title_widget [Adw/Bin
+                  :child (derived-atom [state/state]
+                                       :sidebar-header-title
+                                       #(get % :sidebar-header-title
+                                              [Adw/WindowTitle :title "Lobjur"]))]])
 
 (defn content-header-bar []
   [Adw/HeaderBar
