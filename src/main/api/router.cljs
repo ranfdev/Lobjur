@@ -1,10 +1,12 @@
 (ns api.router
   (:require
    [api.hal :as hal]
-   [api.adapters :as adapters]
+   [api.protocol :as proto]
    [api.url :as url]
    [lobjur.utils.http :as http]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [lobster.adapter]
+   [hackernews.adapter]))
 
 ;; Debug flag
 (def ^:dynamic *debug* true)
@@ -86,32 +88,32 @@
 (defn- handle-feed-source
   "GET /feeds/{source} - Source index"
   [{:keys [source]} _query]
-  (if-let [adapter (adapters/get-adapter source)]
-    (js/Promise.resolve (adapters/source-index adapter))
+  (if-let [adapter (proto/get-adapter source)]
+    (js/Promise.resolve (proto/source-index adapter))
     (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
 
 (defn- handle-feed-stories
   "GET /feeds/{source}/{feed} - Story list"
   [{:keys [source feed]} query]
-  (if-let [adapter (adapters/get-adapter source)]
-    (adapters/fetch-feed adapter feed query)
+  (if-let [adapter (proto/get-adapter source)]
+    (proto/fetch-feed adapter feed query)
     (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
 
 (defn- handle-story
   "GET /stories/{id} - Single story"
   [{:keys [id]} _query]
-  (if-let [{:keys [backend native-id]} (adapters/lookup-id id)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-story adapter native-id)
+  (if-let [{:keys [backend native-id]} (proto/lookup-id id)]
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-story adapter native-id)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))
     (js/Promise.reject (js/Error. (str "Unknown story: " id)))))
 
 (defn- handle-story-comments
   "GET /stories/{id}/comments - Comment tree"
   [{:keys [id]} _query]
-  (if-let [{:keys [backend native-id]} (adapters/lookup-id id)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-comments adapter native-id)
+  (if-let [{:keys [backend native-id]} (proto/lookup-id id)]
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-comments adapter native-id)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))
     (js/Promise.reject (js/Error. (str "Unknown story: " id)))))
 
@@ -120,24 +122,24 @@
   [{:keys [username]} query]
   ;; Try to determine which backend from the query or stored mapping
   (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-user adapter username)
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-user adapter username)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
 
 (defn- handle-user-stories
   "GET /users/{username}/stories - User submissions"
   [{:keys [username]} query]
   (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-user-stories adapter username query)
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-user-stories adapter username query)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
 
 (defn- handle-tags
   "GET /feeds/{source}/tags - Tag list"
   [{:keys [source]} _query]
-  (if-let [adapter (adapters/get-adapter source)]
-    (if (adapters/supports-tags? adapter)
-      (adapters/fetch-tags adapter)
+  (if-let [adapter (proto/get-adapter source)]
+    (if (proto/supports-tags? adapter)
+      (proto/fetch-tags adapter)
       (js/Promise.reject (js/Error. (str "Source " source " does not support tags"))))
     (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
 
@@ -145,16 +147,16 @@
   "GET /tags/{tag}/stories - Stories by tag"
   [{:keys [tag]} query]
   (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-tag-stories adapter tag query)
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-tag-stories adapter tag query)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
 
 (defn- handle-domain-stories
   "GET /domains/{domain}/stories - Stories by domain"
   [{:keys [domain]} query]
   (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (adapters/get-adapter backend)]
-      (adapters/fetch-domain-stories adapter domain query)
+    (if-let [adapter (proto/get-adapter backend)]
+      (proto/fetch-domain-stories adapter domain query)
       (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
 
 ;; Route table
