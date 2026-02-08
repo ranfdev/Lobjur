@@ -174,7 +174,8 @@
                   {:username   (:username user)
                    :created_at (:created_at user)
                    :karma      (:karma user)
-                   :about      (:about user)})))))
+                   :about      (:about user)
+                   :avatar_url (:avatar_url user)})))))
   
   (fetch-user-stories [_ username query]
     (let [page (js/parseInt (or (:page query) "1") 10)
