@@ -3,11 +3,21 @@
   (:require [api.router :as router]))
 
 ;; ============================================================================
-;; Basic HAL Extraction Helpers
+;; Basic HAL Extraction Helpers (Internal Use)
 ;; ============================================================================
+;; Note: These are low-level helpers. Application code should use the smart
+;; navigation helpers below (fetch-collection, fetch-relation) which properly
+;; follow HATEOAS principles by checking _embedded first, then fetching links.
 
 (defn hal-collection
   "Extract an embedded collection from a HAL response.
+   
+   INTERNAL USE ONLY - Application code should use fetch-collection instead,
+   which properly handles both embedded and linked resources.
+   
+   This helper directly accesses _embedded, which violates HATEOAS if the
+   collection is not embedded but available via link. Use fetch-collection
+   for proper hypermedia navigation.
    
    Examples:
      (hal-collection response :stories)
@@ -60,12 +70,25 @@
         (js/Error. (str "No link or embedded resource for relation: " rel))))))
 
 (defn fetch-collection
-  "Fetch a collection relation and extract items.
-   Combines fetch-relation + hal-collection.
+  "Fetch a collection relation and extract items following HATEOAS principles.
+   
+   This is the RECOMMENDED way to access collections in application code.
+   It properly handles both embedded collections (optimization) and linked
+   collections (fetched on demand):
+   
+   1. First checks if collection is embedded (_embedded)
+   2. If not embedded, follows the link to fetch it
+   3. Extracts and returns the collection items
    
    Returns: Promise resolving to array of items
    
    Example:
+     ;; Will use embedded if available, otherwise fetch the link
+     (-> (api/GET '/feeds/lobsters/hot')
+         (.then #(fetch-collection % :stories))
+         (.then (fn [stories] (render-stories stories))))
+     
+     ;; Chaining with other promises
      (fetch-collection story :comments)
      => Promise<[comment1 comment2 ...]>"
   [resource rel]

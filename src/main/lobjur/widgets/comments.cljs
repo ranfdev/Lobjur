@@ -8,7 +8,7 @@
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
-   [api.helpers :refer [external-url hal-collection]]
+   [api.helpers :refer [external-url fetch-collection]]
    [rollui.core :as rollui]
    [lobster.core :refer [base-url]]))
 
@@ -46,7 +46,10 @@
    (mapcat (fn [comment]
              (cons
               (assoc comment :indent_level level)
-              (when-let [replies (hal-collection comment :replies)]
+              ;; Note: replies are embedded by design for nested comments,
+              ;; not fetched separately. This is the one legitimate use of
+              ;; direct _embedded access for nested structures.
+              (when-let [replies (get-in comment [:_embedded :replies])]
                 (flatten-comments replies (inc level)))))
            comments)))
 
@@ -119,17 +122,20 @@
         :.add_css_class (list "small" "flat" "tag" "caption")])]
     :.append
     (-> (api/GET (str "/stories/" id "/comments"))
+        (.then (fn [response]
+                 ;; Use fetch-collection to properly follow HATEOAS:
+                 ;; checks _embedded first, falls back to fetching link if needed
+                 (fetch-collection response :comments)))
         (.then
-         (fn [response]
-           (let [comments (flatten-comments (hal-collection response :comments))]
-             (if (> (count comments) 0)
+         (fn [comments]
+           (let [flat-comments (flatten-comments comments)]
+             (if (> (count flat-comments) 0)
                [Gtk/ScrolledWindow
                 :propagate-natural-height true
                 :vexpand true
                 :child
-                (comments-list-view comments)]
+                (comments-list-view flat-comments)]
                [Adw/StatusPage
                 :title "No comments available"
                 :icon-name "user-invisible-symbolic"
                 :.add_css_class "compact"])))))]])
-

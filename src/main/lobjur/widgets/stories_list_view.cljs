@@ -6,7 +6,7 @@
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
-   [api.helpers :refer [hal-collection external-url next-page prev-page has-relation?]]
+   [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [lobster.core :refer [base-url]]))
 
@@ -100,19 +100,22 @@
             (-> (if response
                   (js/Promise.resolve response)
                   (api/GET initial-url))
+                (.then (fn [resp]
+                         (reset! hal-response resp)
+                         ;; Use fetch-collection to properly follow HATEOAS:
+                         ;; checks _embedded first, falls back to fetching link if needed
+                         (fetch-collection resp :stories)))
                 (.then
-                 (fn [resp]
-                   (reset! hal-response resp)
-                   (let [stories (hal-collection resp :stories)]
-                     (if (> (count stories) 0)
-                       [Gtk/ListBox
-                        :.add_css_class "boxed-list"
-                        :.append
-                        (map story-item-widget stories)]
-                       [Adw/StatusPage
-                        :icon_name "mail-read-symbolic"
-                        :title
-                        "No Stories Available"])))))]))]
+                 (fn [stories]
+                   (if (> (count stories) 0)
+                     [Gtk/ListBox
+                      :.add_css_class "boxed-list"
+                      :.append
+                      (map story-item-widget stories)]
+                     [Adw/StatusPage
+                      :icon_name "mail-read-symbolic"
+                      :title
+                      "No Stories Available"]))))]))]
        :.append
        [Gtk/Box
         :hexpand true
