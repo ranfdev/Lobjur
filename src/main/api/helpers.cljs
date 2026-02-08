@@ -46,6 +46,21 @@
 ;; Smart HAL Navigation Helpers (Phase 2)
 ;; ============================================================================
 
+(defn follow-link
+  "Follow a specific link relation.
+   Always fetches, even if embedded (use fetch-relation for smart behavior).
+   
+   Returns: Promise resolving to the resource
+   
+   Example:
+     (follow-link response :next)
+     => Promise<{:_embedded {:stories [...]}}>"
+  [resource rel]
+  (if-let [href (get-in resource [:_links rel :href])]
+    (router/GET href)
+    (js/Promise.reject
+      (js/Error. (str "No link for relation: " rel)))))
+
 (defn fetch-relation
   "Fetch a HAL relation intelligently:
    1. If resource is embedded, return it immediately (wrapped in promise)
@@ -92,23 +107,13 @@
      (fetch-collection story :comments)
      => Promise<[comment1 comment2 ...]>"
   [resource rel]
-  (-> (fetch-relation resource rel)
-      (.then #(hal-collection % rel))))
-
-(defn follow-link
-  "Follow a specific link relation.
-   Always fetches, even if embedded (use fetch-relation for smart behavior).
-   
-   Returns: Promise resolving to the resource
-   
-   Example:
-     (follow-link response :next)
-     => Promise<{:_embedded {:stories [...]}}>"
-  [resource rel]
-  (if-let [href (get-in resource [:_links rel :href])]
-    (router/GET href)
-    (js/Promise.reject
-      (js/Error. (str "No link for relation: " rel)))))
+  ;; Check if the collection is directly embedded (already an array)
+  (if-let [embedded-coll (get-in resource [:_embedded rel])]
+    ;; Collection is embedded - return it directly
+    (js/Promise.resolve embedded-coll)
+    ;; Collection is not embedded - fetch the link and extract from response
+    (-> (follow-link resource rel)
+        (.then #(hal-collection % rel)))))
 
 ;; ============================================================================
 ;; Helper Predicates
