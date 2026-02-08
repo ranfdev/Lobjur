@@ -39,9 +39,9 @@
            :hexpand true
            :css_classes #js ["heading"]
            :margin-start 8 :margin-top 4])
-        [Gtk/FlowBox
-         :spacing 8
-         :selection-mode Gtk/SelectionMode.NONE
+        [Adw/WrapBox
+         :child-spacing 8
+         :line-spacing 4
          :.append
          (when has-url?
            (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
