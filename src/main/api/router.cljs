@@ -2,10 +2,12 @@
   (:require
    [api.hal :as hal]
    [api.adapters :as adapters]
+   [api.url :as url]
+   [lobjur.utils.http :as http]
    [clojure.string :as str]))
 
 ;; Debug flag
-(def ^:dynamic *debug* false)
+(def ^:dynamic *debug* true)
 
 (defn- debug-log [& args]
   "Log debug messages when *debug* is enabled"
@@ -54,28 +56,6 @@
     (if result
       (debug-log "✓ Pattern" pattern "matched with params:" (:params result))
       (debug-log "✗ Pattern" pattern "did not match"))
-    result))
-
-(defn- parse-query-params
-  "Parse query string into a map."
-  [query-string]
-  (when (and query-string (not (str/blank? query-string)))
-    (into {}
-          (for [pair (str/split query-string #"&")
-                :let [[k v] (str/split pair #"=" 2)]
-                :when k]
-            [(keyword k) (or v true)]))))
-
-(defn- parse-url
-  "Parse a URL into {:path :query-params}."
-  [url]
-  (let [[path query] (str/split url #"\?" 2)
-        normalized (if (and (> (count path) 1) (str/ends-with? path "/"))
-                     (subs path 0 (dec (count path)))
-                     path)
-        result {:path normalized
-                :query-params (parse-query-params query)}]
-    (debug-log "Parsed URL:" url "=> path:" normalized "query:" (parse-query-params query))
     result))
 
 ;; Route handlers
@@ -210,24 +190,57 @@
       (debug-log "No route found for:" path))
     result))
 
+;; Request handlers by scheme
+
+(defn- get-in-process
+  "Handle in-process API requests using the router."
+  [path query-params]
+  (debug-log "\n=== In-Process GET ===" path)
+  (if-let [{:keys [handler params]} (find-route path)]
+    (do
+      (debug-log "Calling handler with params:" params "query:" query-params)
+      (-> (handler params query-params)
+          (.then (fn [result]
+                   (debug-log "Response successful for:" path)
+                   result))
+          (.catch (fn [error]
+                    (debug-log "Error occurred:" (.-message error))
+                    (js/Promise.reject error)))))
+    (do
+      (debug-log "Route not found, rejecting promise")
+      (js/Promise.reject (js/Error. (str "No route found for: " path))))))
+
+(defn- get-external
+  "Handle external HTTP/HTTPS requests."
+  [full-url]
+  (debug-log "\n=== External GET ===" full-url)
+  (-> (http/get full-url)
+      (.then (fn [response]
+               (debug-log "External response successful for:" full-url)
+               ;; Try to parse as JSON, return raw string if fails
+               (try
+                 (js/JSON.parse response)
+                 (catch js/Error _e
+                   response))))
+      (.catch (fn [error]
+                (debug-log "External request failed:" (.-message error))
+                (js/Promise.reject error)))))
+
 ;; Public API
 
 (defn GET
   "Execute a GET request against the router.
-   Returns a Promise that resolves to a HAL resource."
-  [url]
-  (debug-log "\n=== GET Request ===" url)
-  (let [{:keys [path query-params]} (parse-url url)]
-    (if-let [{:keys [handler params]} (find-route path)]
-      (do
-        (debug-log "Calling handler with params:" params "query:" query-params)
-        (-> (handler params query-params)
-            (.then (fn [result]
-                     (debug-log "Response successful for:" path)
-                     result))
-            (.catch (fn [error]
-                      (debug-log "Error occurred:" (.-message error))
-                      (js/Promise.reject error)))))
-      (do
-        (debug-log "Route not found, rejecting promise")
-        (js/Promise.reject (js/Error. (str "No route found for: " path)))))))
+   Supports both in-process and external URLs:
+   - Relative paths (e.g., '/feeds/lobsters') -> in-process
+   - in-process://api/... -> in-process
+   - https://... or http://... -> external HTTP request
+   
+   Returns a Promise that resolves to a HAL resource (in-process) or response data (external)."
+  [request-url]
+  (debug-log "\n=== GET Request ===" request-url)
+  (let [{:keys [scheme path query-params]} (url/parse-url request-url)]
+    (debug-log "Parsed scheme:" scheme "path:" path "query-params:" query-params)
+    (case scheme
+      :in-process (get-in-process path query-params)
+      (:https :http) (get-external path)
+      (js/Promise.reject (js/Error. (str "Unsupported URL scheme: " scheme))))))
