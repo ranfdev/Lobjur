@@ -1,17 +1,28 @@
 (ns hackernews.adapter
   (:require
+   ["gjs.gi.GLib" :as GLib]
    [api.protocol :as proto]
    [api.hal :as hal]
    [hackernews.core :as hn]
    [lobjur.utils.common :refer [html->text]]))
 
+(def ^:private dummy-base (GLib/Uri.parse "https://example.com/" GLib/UriFlags.NONE))
+
+(defn- parse-host [url]
+  (when (not-empty url)
+    (try
+      (.get_host (.parse_relative dummy-base url GLib/UriFlags.NONE))
+      (catch :default _ nil))))
+
 (defn- normalize-hn-story
   "Normalize a HN story to HAL format."
   [story]
-  (let [id (proto/make-story-id :hn (:id story))]
-    {:id            id
+  (let [native-id (:id story)
+        url (:url story)]
+    {:id            native-id
+     :provider      "hn"
      :title         (:title story)
-     :url           (:url story)
+     :url           url
      :score         (:score story)
      :comment_count (:descendants story)
      :created_at    (when (:time story)
@@ -19,30 +30,32 @@
                           (.toISOString)))
      :submitter     (:by story)
      :tags          []
-     :_links        (hal/story-links id
-                                     :external-url (not-empty (:url story))
-                                     :author (:by story))}))
+     :_links        (hal/story-links "hn" native-id
+                                     :external-url (not-empty url)
+                                     :author (:by story)
+                                     :domain (parse-host url))}))
 
 (defn- placeholder-hn-story
   "Create a placeholder story with just an ID and self-link."
   [hn-id]
-  (let [id (proto/make-story-id :hn hn-id)]
-    {:id         id
-     :_placeholder true
-     :_links     {:self (hal/link (str "/stories/" id))}}))
+  {:id         hn-id
+   :provider   "hn"
+   :_placeholder true
+   :_links     {:self (hal/link (str "/hn/stories/" hn-id))}})
 
 (defn- normalize-hn-comment
   "Normalize a HN comment to HAL format."
   [comment]
-  (let [id (str "hn-c-" (:id comment))]
+  (let [id (:id comment)]
     {:id         id
+     :provider   "hn"
      :text       (html->text (:text comment))
      :created_at (when (:time comment)
                    (-> (js/Date. (* (:time comment) 1000))
                        (.toISOString)))
      :author     (:by comment)
      :score      0
-     :_links     (hal/comment-links id :author (:by comment))
+     :_links     (hal/comment-links "hn" id :author (:by comment))
      :_embedded  (when (seq (:children comment))
                    {:replies (mapv normalize-hn-comment (:children comment))})}))
 
@@ -87,13 +100,15 @@
   (fetch-story [_ native-id]
     (-> (hn/item native-id)
         (.then (fn [story]
-                 (let [id (proto/make-story-id :hn (:id story))]
+                 (let [id (:id story)]
                    (hal/resource
-                    (merge (hal/story-links id
+                    (merge (hal/story-links "hn" id
                                             :external-url (not-empty (:url story))
-                                            :author (:by story))
+                                            :author (:by story)
+                                            :domain (parse-host (:url story)))
                            {:feed (hal/link "/feeds/hn")})
                     {:id            id
+                     :provider      "hn"
                      :title         (:title story)
                      :url           (:url story)
                      :score         (:score story)
@@ -108,10 +123,10 @@
   (fetch-comments [_ native-id]
     (-> (hn/item-with-comments native-id)
         (.then (fn [story]
-                 (let [story-id (proto/make-story-id :hn (:id story))]
+                 (let [story-id (:id story)]
                    (hal/resource
-                    {:self  (hal/link (str "/stories/" story-id "/comments"))
-                     :story (hal/link (str "/stories/" story-id))}
+                    {:self  (hal/link (str "/hn/stories/" story-id "/comments"))
+                     :story (hal/link (str "/hn/stories/" story-id))}
                     {}
                     {:comments (mapv normalize-hn-comment (:children story))}))))))
   
@@ -119,9 +134,10 @@
     (-> (hn/user username)
         (.then (fn [user]
                  (hal/resource
-                  (assoc (hal/user-links username)
-                         :submitted (hal/link (str "/users/" username "/stories?source=hn")))
+                  (assoc (hal/user-links "hn" username)
+                         :submitted (hal/link (str "/hn/users/" username "/stories")))
                   {:username   (:id user)
+                   :provider   "hn"
                    :created_at (when (:created user)
                                  (-> (js/Date. (* (:created user) 1000))
                                      (.toISOString)))
@@ -130,7 +146,7 @@
   
   (fetch-user-stories [_ username query]
     (let [page (js/parseInt (or (:page query) "1") 10)
-          base-href (str "/users/" username "/stories")
+          base-href (str "/hn/users/" username "/stories")
           query-params (dissoc query :page)]
       (-> (hn/user username)
           (.then (fn [u]

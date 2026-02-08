@@ -1,26 +1,5 @@
 (ns api.protocol)
 
-;; ID Registry - maps public IDs to backend-specific data
-(defonce id-registry (atom {}))
-
-(defn register-id!
-  "Register a public ID mapping to a backend."
-  [public-id backend native-id]
-  (swap! id-registry assoc public-id {:backend backend :native-id native-id})
-  public-id)
-
-(defn lookup-id
-  "Look up backend info for a public ID."
-  [public-id]
-  (get @id-registry public-id))
-
-(defn make-story-id
-  "Create a unique story ID and register it."
-  [backend native-id]
-  (let [public-id (str (name backend) "-" native-id)]
-    (register-id! public-id backend native-id)
-    public-id))
-
 ;; Protocol for backend adapters
 
 (defprotocol BackendAdapter

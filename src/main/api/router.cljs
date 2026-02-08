@@ -86,93 +86,84 @@
                :best   (hal/link "/feeds/hn/best")}}])))
 
 (defn- handle-feed-source
-  "GET /feeds/{source} - Source index"
-  [{:keys [source]} _query]
-  (if-let [adapter (proto/get-adapter source)]
+  "GET /feeds/{provider} - Source index"
+  [{:keys [provider]} _query]
+  (if-let [adapter (proto/get-adapter provider)]
     (js/Promise.resolve (proto/source-index adapter))
-    (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
+    (js/Promise.reject (js/Error. (str "Unknown source: " provider)))))
 
 (defn- handle-feed-stories
-  "GET /feeds/{source}/{feed} - Story list"
-  [{:keys [source feed]} query]
-  (if-let [adapter (proto/get-adapter source)]
+  "GET /feeds/{provider}/{feed} - Story list"
+  [{:keys [provider feed]} query]
+  (if-let [adapter (proto/get-adapter provider)]
     (proto/fetch-feed adapter feed query)
-    (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
+    (js/Promise.reject (js/Error. (str "Unknown source: " provider)))))
 
 (defn- handle-story
-  "GET /stories/{id} - Single story"
-  [{:keys [id]} _query]
-  (if-let [{:keys [backend native-id]} (proto/lookup-id id)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-story adapter native-id)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))
-    (js/Promise.reject (js/Error. (str "Unknown story: " id)))))
+  "GET /{provider}/stories/{id} - Single story"
+  [{:keys [provider id]} _query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-story adapter id)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 (defn- handle-story-comments
-  "GET /stories/{id}/comments - Comment tree"
-  [{:keys [id]} _query]
-  (if-let [{:keys [backend native-id]} (proto/lookup-id id)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-comments adapter native-id)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))
-    (js/Promise.reject (js/Error. (str "Unknown story: " id)))))
+  "GET /{provider}/stories/{id}/comments - Comment tree"
+  [{:keys [provider id]} _query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-comments adapter id)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 (defn- handle-user
-  "GET /users/{username} - User profile"
-  [{:keys [username]} query]
-  ;; Try to determine which backend from the query or stored mapping
-  (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-user adapter username)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
+  "GET /{provider}/users/{username} - User profile"
+  [{:keys [provider username]} _query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-user adapter username)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 (defn- handle-user-stories
-  "GET /users/{username}/stories - User submissions"
-  [{:keys [username]} query]
-  (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-user-stories adapter username query)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
+  "GET /{provider}/users/{username}/stories - User submissions"
+  [{:keys [provider username]} query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-user-stories adapter username query)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 (defn- handle-tags
-  "GET /feeds/{source}/tags - Tag list"
-  [{:keys [source]} _query]
-  (if-let [adapter (proto/get-adapter source)]
+  "GET /feeds/{provider}/tags - Tag list"
+  [{:keys [provider]} _query]
+  (if-let [adapter (proto/get-adapter provider)]
     (if (proto/supports-tags? adapter)
       (proto/fetch-tags adapter)
-      (js/Promise.reject (js/Error. (str "Source " source " does not support tags"))))
-    (js/Promise.reject (js/Error. (str "Unknown source: " source)))))
+      (js/Promise.reject (js/Error. (str "Source " provider " does not support tags"))))
+    (js/Promise.reject (js/Error. (str "Unknown source: " provider)))))
 
 (defn- handle-tag-stories
-  "GET /tags/{tag}/stories - Stories by tag"
-  [{:keys [tag]} query]
-  (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-tag-stories adapter tag query)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
+  "GET /{provider}/tags/{tag}/stories - Stories by tag"
+  [{:keys [provider tag]} query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-tag-stories adapter tag query)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 (defn- handle-domain-stories
-  "GET /domains/{domain}/stories - Stories by domain"
-  [{:keys [domain]} query]
-  (let [backend (or (keyword (:source query)) :lobsters)]
-    (if-let [adapter (proto/get-adapter backend)]
-      (proto/fetch-domain-stories adapter domain query)
-      (js/Promise.reject (js/Error. (str "Unknown backend: " backend))))))
+  "GET /{provider}/domains/{domain}/stories - Stories by domain"
+  [{:keys [provider domain]} query]
+  (if-let [adapter (proto/get-adapter provider)]
+    (proto/fetch-domain-stories adapter domain query)
+    (js/Promise.reject (js/Error. (str "Unknown provider: " provider)))))
 
 ;; Route table
 
 (def routes
-  [["/"                           handle-root]
-   ["/feeds"                      handle-feeds]
-   ["/feeds/{source}"             handle-feed-source]
-   ["/feeds/{source}/tags"        handle-tags]
-   ["/feeds/{source}/{feed}"      handle-feed-stories]
-   ["/stories/{id}"               handle-story]
-   ["/stories/{id}/comments"      handle-story-comments]
-   ["/users/{username}"           handle-user]
-   ["/users/{username}/stories"   handle-user-stories]
-   ["/tags/{tag}/stories"         handle-tag-stories]
-   ["/domains/{domain}/stories"   handle-domain-stories]])
+  [["/"                                        handle-root]
+   ["/feeds"                                   handle-feeds]
+   ["/feeds/{provider}"                        handle-feed-source]
+   ["/feeds/{provider}/tags"                   handle-tags]
+   ["/feeds/{provider}/{feed}"                 handle-feed-stories]
+   ["/{provider}/stories/{id}"                 handle-story]
+   ["/{provider}/stories/{id}/comments"        handle-story-comments]
+   ["/{provider}/users/{username}"             handle-user]
+   ["/{provider}/users/{username}/stories"     handle-user-stories]
+   ["/{provider}/tags/{tag}/stories"           handle-tag-stories]
+   ["/{provider}/domains/{domain}/stories"     handle-domain-stories]])
 
 (defn- find-route
   "Find a matching route for a path."

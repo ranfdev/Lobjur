@@ -49,23 +49,25 @@
 
 (defn story-links
   "Generate standard links for a story."
-  [story-id & {:keys [external-url author]}]
-  (cond-> {:self     (link (str "/stories/" story-id))
-           :comments (link (str "/stories/" story-id "/comments"))}
-    author       (assoc :author (link (str "/users/" author)))
-    external-url (assoc :external (link external-url))))
+  [provider native-id & {:keys [external-url author tags domain]}]
+  (cond-> {:self     (link (str "/" provider "/stories/" native-id))
+           :comments (link (str "/" provider "/stories/" native-id "/comments"))}
+    author       (assoc :author (link (str "/" provider "/users/" author)))
+    external-url (assoc :external (link external-url))
+    domain       (assoc :domain-stories (link (str "/" provider "/domains/" domain "/stories")))
+    (seq tags)   (assoc :tag-stories (mapv (fn [t] (assoc (link (str "/" provider "/tags/" t "/stories")) :name t)) tags))))
 
 (defn comment-links
   "Generate standard links for a comment."
-  [comment-id & {:keys [author]}]
-  (cond-> {:self (link (str "/comments/" comment-id))}
-    author (assoc :author (link (str "/users/" author)))))
+  [provider comment-id & {:keys [author]}]
+  (cond-> {:self (link (str "/" provider "/comments/" comment-id))}
+    author (assoc :author (link (str "/" provider "/users/" author)))))
 
 (defn user-links
   "Generate standard links for a user."
-  [username]
-  {:self    (link (str "/users/" username))
-   :stories (link (str "/users/" username "/stories"))})
+  [provider username]
+  {:self    (link (str "/" provider "/users/" username))
+   :stories (link (str "/" provider "/users/" username "/stories"))})
 
 (defn paginated
   "Add pagination links to a resource, preserving existing query parameters.

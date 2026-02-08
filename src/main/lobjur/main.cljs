@@ -69,20 +69,20 @@
                          :css_classes #js ["image-button"]])))
 
            :push-user
-           (push-content-page state (user/user-view payload) payload)
+           (let [{:keys [href title]} payload]
+             (push-content-page state (user/user-view href) title))
 
            :push-user-stories
-           (push-sidebar-page state
-                              (stories-list-view (str "/users/" payload "/stories"))
-                              (str payload "'s Stories"))
+           (let [{:keys [href title]} payload]
+             (push-sidebar-page state (stories-list-view href) title))
+
            :push-domain-stories
-           (push-sidebar-page state
-                              (stories-list-view (str "/domains/" payload "/stories"))
-                              (str payload " Stories"))
+           (let [{:keys [href title]} payload]
+             (push-sidebar-page state (stories-list-view href) title))
+
            :push-tagged-stories
-           (push-sidebar-page state
-                              (stories-list-view (str "/tags/" payload "/stories?source=lobsters"))
-                              (str payload " Stories"))
+           (let [{:keys [href title]} payload]
+             (push-sidebar-page state (stories-list-view href) title))
 
            :pop-main-stack state)
 

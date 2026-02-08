@@ -9,6 +9,7 @@
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
    [api.router :as api]
+   [api.helpers :refer [hal-link]]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
 
@@ -22,7 +23,8 @@
 (defn loaded-user-view [{:keys [username avatar_url karma] :as user}]
   (let [grid (Gtk/Grid. #js {:row_spacing 8
                              :column_spacing 8
-                             :halign Gtk/Align.START})]
+                             :halign Gtk/Align.START})
+        stories-href (hal-link user :stories)]
     (doseq [[i [k v]] (zipmap (range) user)
             :let [key-label
                   (Gtk/Label. #js {:label (name k)
@@ -71,10 +73,10 @@
      [Gtk/Button
       :label "Newest Stories"
       :.add_css_class "suggested-action"
-      :$clicked #(state/send [:push-user-stories username])]]))
+      :$clicked #(state/send [:push-user-stories {:href stories-href :title (str username "'s Stories")}])]]))
 
-(defn user-view [username]
-  (let [res (r/resource #(api/GET (str "/users/" username)))]
+(defn user-view [user-href]
+  (let [res (r/resource #(api/GET user-href))]
     [Adw/Clamp
      :.add_css_class "background"
      :margin-start 8

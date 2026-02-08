@@ -1,20 +1,21 @@
 (ns lobjur.widgets.stories-list-view
   (:require
    ["gjs.gi.Adw" :as Adw]
-   ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gtk" :as Gtk]
+   [clojure.string :as str]
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [rollui.resource :as r]
-   [rollui.resource-view :as rv]
-   [lobster.core :refer [base-url]]))
+   [rollui.resource-view :as rv]))
 
 (defn story-item-widget
   [{:keys [title url score created_at comment_count tags submitter] :as story}]
-  (let [has-url? (not-empty url)]
+  (let [has-url? (not-empty url)
+        domain-href (hal-link story :domain-stories)
+        tag-story-links (get-in story [:_links :tag-stories])]
     [Gtk/Box
      :orientation Gtk/Orientation.HORIZONTAL
      :margin-top 4
@@ -43,17 +44,23 @@
          :child-spacing 8
          :line-spacing 4
          :.append
-         (when has-url?
-           (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
+         (when domain-href
+           (let [host (get-in story [:_links :domain-stories :name]
+                              ;; fallback: extract host from external URL
+                              (some-> (hal-link story :external)
+                                      (str/replace #"^https?://" "")
+                                      (str/replace #"/.*" "")))]
              [Gtk/Button
               :.add_css_class (list "small" "button" "flat" "caption")
               :halign Gtk/Align.START
-              :$clicked #(state/send [:push-domain-stories host])
+              :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
               :label host]))
          :.append
-         (for [t tags]
+         (for [tl tag-story-links
+               :let [t (:name tl)
+                     href (:href tl)]]
            [Gtk/Button
-            :$clicked #(state/send [:push-tagged-stories t])
+            :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
             :label t
             :valign Gtk/Align.CENTER
             :.add_css_class (list "small" "flat" "tag" "caption")])]
@@ -63,7 +70,7 @@
          :.append
          (list
           [Gtk/Button
-           :$clicked #(state/send [:push-user submitter])
+           :$clicked #(state/send [:push-user {:href (hal-link story :author) :title submitter}])
            :label submitter
            :css_classes #js ["small" "button" "flat" "body"]]
           [Gtk/Label

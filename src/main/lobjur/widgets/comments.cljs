@@ -2,17 +2,16 @@
   (:require
    ["gjs.gi.Adw" :as Adw]
    ["gjs.gi.Gio" :as Gio]
-   ["gjs.gi.GLib" :as GLib]
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
+   [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
-   [api.helpers :refer [external-url fetch-collection]]
+   [api.helpers :refer [external-url fetch-collection hal-link]]
    [rollui.core :as rollui]
    [rollui.resource :as r]
-   [rollui.resource-view :as rv]
-   [lobster.core :refer [base-url]]))
+   [rollui.resource-view :as rv]))
 
 (defn comment-widget [refs]
   [Gtk/Box
@@ -60,14 +59,15 @@
   (.set_child item (rollui/RefsWidget comment-widget)))
 (defn list-bind [_ ^js item]
   (let [data (.-data (.get_item item))
-        {:keys [text indent_level created_at author]} data
+        {:keys [text indent_level created_at author] :as comment-data} data
+        author-href (hal-link comment-data :author)
         child (.get_child item)
         refs ^js @(.-refs child)]
     (.set_margin_start ^js (:box refs) (* 4 indent_level))
     (doto ^js (:user-btn refs)
       (.set_label author)
       (.connect "clicked"
-                #(state/send [:push-user author])))
+                #(state/send [:push-user {:href author-href :title author}])))
     (.set_label ^js (:time-ago refs) (time-ago created_at))
     (.set_label ^js (:label refs) text)))
 
@@ -83,8 +83,11 @@
                   (.connect "bind" list-bind))]
     (Gtk/ListView.new selection-model factory)))
 
-(defn comments-view [{:keys [id title url score tags]}]
-  (let [res (r/resource #(-> (api/GET (str "/stories/" id "/comments"))
+(defn comments-view [{:keys [title url score tags] :as story}]
+  (let [comments-href (get-in story [:_links :comments :href])
+        domain-href (hal-link story :domain-stories)
+        tag-story-links (get-in story [:_links :tag-stories])
+        res (r/resource #(-> (api/GET comments-href)
                              (.then (fn [response]
                                       (fetch-collection response :comments)))))]
     [Adw/Clamp
@@ -112,18 +115,23 @@
       [Gtk/Box
        :spacing 8
        :.append
-       (let [host (.get_host (.parse_relative base-url url GLib/UriFlags.NONE))]
-         [Gtk/Button
-          :.add_css_class (list "small" "button" "flat" "caption")
-          :halign Gtk/Align.START
-          :$clicked #(state/send [:push-domain-stories host])
-          :label host])
+       (when domain-href
+         (let [host (some-> (external-url story)
+                            (str/replace #"^https?://" "")
+                            (str/replace #"/.*" ""))]
+           [Gtk/Button
+            :.add_css_class (list "small" "button" "flat" "caption")
+            :halign Gtk/Align.START
+            :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
+            :label host]))
        :.append
-       (for [t tags]
+       (for [tl tag-story-links
+             :let [t (:name tl)
+                   href (:href tl)]]
          [Gtk/Button
           :label t
           :valign Gtk/Align.CENTER
-          :$clicked #(state/send [:push-tagged-stories t])
+          :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
           :.add_css_class (list "small" "flat" "tag" "caption")])]
       :.append
       [Adw/Bin
