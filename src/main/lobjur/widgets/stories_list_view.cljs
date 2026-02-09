@@ -224,7 +224,9 @@
                       new-stack (build-view-stack source)]
                   (.set_child content-bin new-stack)
                   (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                    (.set_stack ^js bar new-stack)))))
+                    (.set_stack ^js bar new-stack))
+                  (swap! state/state assoc :search-href
+                         (get-in source [:extra-links :search])))))
     (swap! state/global-widgets assoc
            :home-dropdown dropdown)
     [Gtk/Box

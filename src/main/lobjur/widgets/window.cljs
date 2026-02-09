@@ -7,6 +7,10 @@
 
 (defn sidebar-header-bar []
   [Adw/HeaderBar
+   :.pack_start [Adw/Bin
+                 :child (derived-atom [state/state]
+                                      :sidebar-header-start
+                                      #(get % :sidebar-header-start nil))]
    :.pack_end [Adw/Bin
                :child (derived-atom [state/state]
                                     :sidebar-header-end

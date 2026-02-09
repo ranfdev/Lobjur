@@ -87,7 +87,8 @@
     {:self   (hal/link "/feeds/hackernews")
      :top    (hal/link "/feeds/hackernews/top")
      :newest (hal/link "/feeds/hackernews/newest")
-     :best   (hal/link "/feeds/hackernews/best")}
+     :best   (hal/link "/feeds/hackernews/best")
+     :search (hal/link "/hackernews/search")}
     {:name        "Hacker News"
      :description "Y Combinator's tech news aggregator"})))
 

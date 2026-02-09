@@ -13,7 +13,8 @@
    [lobjur.widgets.window :refer [window-content]]
    [api.router :as api]
    [api.helpers :refer [external-url provider-comments-url provider-user-url]]
-   [rollui.core :refer [build-ui]]))
+   [api.sources :as sources]
+   [rollui.core :refer [build-ui derived-atom]]))
 
 (defn create-story-stack
   "Create a ViewStack with comments and web view pages for a story."
@@ -86,22 +87,27 @@
     ([state [k payload :as action]]
      (-> (case k
            :init
-           (let [sidebar-view (build-ui (home-stories))]
+           (let [sidebar-view (build-ui (home-stories))
+                 initial-source (first sources/sources)
+                 search-href (get-in initial-source [:extra-links :search])]
              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
              (-> state
                  (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
-                 (assoc :sidebar-header-end [Gtk/Box
-                                             :.append [Gtk/Button
-                                                       :icon-name "edit-find-symbolic"
-                                                       :tooltip-text "Search"
-                                                       :$clicked #(state/send [:push-search])]
-                                             :.append [Gtk/MenuButton
-                                                       :icon-name "open-menu-symbolic"
-                                                       :tooltip-text "Main menu"
-                                                       :menu-model (doto (Gio/Menu.)
-                                                                     (.append "Reload" "win.reload")
-                                                                     (.append "About" "win.about")
-                                                                     (.append "Donate" "win.donate"))]])))
+                 (assoc :search-href search-href)
+                 (assoc :sidebar-header-start
+                        [Gtk/Button
+                         :icon-name "edit-find-symbolic"
+                         :tooltip-text "Search"
+                         :visible (derived-atom [state/state] :search-visible
+                                    #(some? (:search-href %)))
+                         :$clicked #(state/send [:push-search])])
+                 (assoc :sidebar-header-end [Gtk/MenuButton
+                                             :icon-name "open-menu-symbolic"
+                                             :tooltip-text "Main menu"
+                                             :menu-model (doto (Gio/Menu.)
+                                                           (.append "Reload" "win.reload")
+                                                           (.append "About" "win.about")
+                                                           (.append "Donate" "win.donate"))])))
 
            :reload
            (let [sidebar-view (build-ui (home-stories))]
