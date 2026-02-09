@@ -147,12 +147,18 @@
       (.then (fn [user]
                (hal/resource
                 (hal/user-links "lobsters" (:username params))
-                {:username   (:username user)
-                 :provider   "lobsters"
-                 :created_at (:created_at user)
-                 :karma      (:karma user)
-                 :about      (:about user)
-                 :avatar_url (:avatar_url user)})))))
+                {:username      (:username user)
+                 :provider      "lobsters"
+                 :created_at    (:created_at user)
+                 :karma         (:karma user)
+                 :about         (:about user)
+                 :avatar_url    (when-let [av (:avatar_url user)]
+                                  (if (.startsWith av "http")
+                                    av
+                                    (str "https://lobste.rs" av)))
+                 :invited_by    (:invited_by_user user)
+                 :is_admin      (:is_admin user)
+                 :is_moderator  (:is_moderator user)})))))
 
 (defn- user-stories-handler [{:keys [params query]}]
   (let [username (:username params)

@@ -21,7 +21,7 @@
       (.then #(Gio/MemoryInputStream.new_from_bytes %))
       (.then #(Pixbuf/Pixbuf.new_from_stream % nil))))
 
-(defn loaded-user-view [{:keys [username avatar_url karma about created_at] :as user}]
+(defn loaded-user-view [{:keys [username avatar_url karma about created_at invited_by is_admin is_moderator] :as user}]
   (let [grid (Gtk/Grid. #js {:row_spacing 8
                              :column_spacing 8
                              :halign Gtk/Align.START})
@@ -31,7 +31,13 @@
                  (seq about-text)
                  (conj ["About" about-text])
                  (seq created_at)
-                 (conj ["Joined" created_at]))]
+                 (conj ["Joined" created_at])
+                 (seq invited_by)
+                 (conj ["Invited by" invited_by])
+                 is_admin
+                 (conj ["Role" "Admin"])
+                 (and is_moderator (not is_admin))
+                 (conj ["Role" "Moderator"]))]
     (doseq [[i [k v]] (zipmap (range) fields)
             :let [key-label
                   (Gtk/Label. #js {:label k
