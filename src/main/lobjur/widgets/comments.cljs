@@ -1,6 +1,8 @@
 (ns lobjur.widgets.comments
   (:require
    ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Gdk" :as Gdk]
+   ["gjs.gi.Gio" :as Gio]
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
@@ -8,13 +10,35 @@
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url fetch-collection hal-link]]
+   [rollui.core :as rollui]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
 
 (defn- comment-content-widget [comment depth]
   (let [{:keys [text created_at author]} comment
-        author-href (hal-link comment :author)]
+        author-href (hal-link comment :author)
+        action-group (doto (Gio/SimpleActionGroup.)
+                       (.add_action
+                        (doto (Gio/SimpleAction. #js {:name "copy-text"})
+                          (.connect "activate"
+                            (fn [_ _]
+                              (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                (.set ^js clipboard text))))))
+                       (.add_action
+                        (doto (Gio/SimpleAction. #js {:name "view-author"})
+                          (.connect "activate"
+                            (fn [_ _]
+                              (state/send [:push-user {:href author-href :title author}]))))))
+        menu (doto (Gio/Menu.)
+               (.append "Copy Text" "comment.copy-text")
+               (.append "View Author" "comment.view-author"))
+        box-ref (atom nil)]
+    (add-watch box-ref ::install-actions
+      (fn [_ _ _ widget]
+        (when widget
+          (.insert_action_group ^js widget "comment" action-group))))
     [Gtk/Box
+     ::rollui/ref box-ref
      :.add_css_class "comment"
      :.add_css_class (str "comment-depth-" (mod depth 6))
      :orientation Gtk/Orientation.VERTICAL
@@ -28,7 +52,13 @@
         :css_classes #js ["small" "button" "flat" "heading"]
         :$clicked #(state/send [:push-user {:href author-href :title author}])]
        :.append
-       [Gtk/Label :label (time-ago created_at)]]
+       [Gtk/Label :label (time-ago created_at) :hexpand true]
+       :.append
+       [Gtk/MenuButton
+        :icon-name "view-more-symbolic"
+        :css_classes #js ["flat" "small" "comment-revealer-btn"]
+        :valign Gtk/Align.CENTER
+        :menu-model menu]]
 
       [Gtk/Label
        :label text
