@@ -6,6 +6,7 @@
    ["gjs.gi.Gio" :as Gio]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
+    [lobjur.widgets.webview :as webview]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
@@ -13,12 +14,49 @@
    [api.helpers :refer [external-url]]
    [rollui.core :refer [build-ui]]))
 
-(defn set-content-root [state view]
-  (let [w (build-ui view)]
-    (.set_child ^js (:content-detail-bin @state/global-widgets) w)
+(defn create-story-stack
+  "Create a ViewStack with comments and web view pages for a story."
+  [story]
+  (let [comments-page (build-ui (comments/comments-view story))
+        url (external-url story)
+        has-url? (some? url)
+        stack (Adw/ViewStack.)]
+    ;; Add comments page with icon
+    (doto (.add_titled stack comments-page "comments" "Comments")
+      (.set_icon_name "user-available-symbolic"))
+    ;; Add web view page if URL exists
+    (when has-url?
+      (doto (.add_titled stack (webview/webview-page url) "article" "Article")
+        (.set_icon_name "web-browser-symbolic")))
+    ;; Store stack reference in global-widgets and update view-switcher bar if present
+    (swap! state/global-widgets assoc :content-stack stack)
+    (when-let [bar (:content-view-switcher-bar @state/global-widgets)]
+      (.set_stack ^js bar stack))
+    (when-let [vs (:content-view-switcher @state/global-widgets)]
+      (.set_stack ^js vs stack))
+    stack))
+
+(defn set-content-root-with-stack
+  "Set content root with a stack of views (comments + optional web view)."
+  [state story initial-view]
+  (let [;; Clean up old stack/webview if exists
+        old-stack (:content-stack @state/global-widgets)
+        _ (when old-stack
+            ;; GTK will handle cleanup when we replace the child
+            ;; Clear the reference
+            (swap! state/global-widgets dissoc :content-stack))
+        stack (create-story-stack story)
+        url (external-url story)
+        has-url? (some? url)
+        view-name (if (= initial-view :comments) "comments"
+                    (if has-url? "article" "comments"))]
+    (.set_child ^js (:content-detail-bin @state/global-widgets) stack)
     (.pop_to_tag ^js (:content-nav-view @state/global-widgets) "content-root")
     (.set_show_content ^js (:split-view @state/global-widgets) true)
-    (assoc state :selected-story-view w)))
+    ;; Set visible child based on initial-view parameter
+    (.set_visible_child_name ^js stack view-name)
+    (assoc state :selected-story-view stack)))
+
 
 (defn push-sidebar-page [state view title]
   (let [page (Adw/NavigationPage.
@@ -64,17 +102,22 @@
              state)
 
            :select-story
-           (-> state
-               (set-content-root (comments/comments-view payload))
-               (assoc :selected-story payload)
-               (assoc :content-header-end
-                      (when-let [url (external-url payload)]
-                        [Gtk/LinkButton
-                         :uri url
-                         :icon-name "web-browser-symbolic"
-                         :css_classes #js ["image-button"]])))
+            (let [url (external-url payload)
+                  has-url? (some? url)
+                  initial-view (get payload :initial-view (if has-url? :article :comments))]
+              (-> state
+                  (set-content-root-with-stack payload initial-view)
+                  (assoc :selected-story payload)
+                  (assoc :show-view-switcher has-url?) ; Hide switcher if no URL
+                  (assoc :content-header-end
+                         (when has-url?
+                           [Gtk/LinkButton
+                            :uri url
+                            :tooltip-text "Open in browser"
+                            :icon-name "window-new-symbolic"
+                            :css_classes #js ["image-button"]]))))
 
-           :push-user
+            :push-user
            (let [{:keys [href title]} payload]
              (push-content-page state (user/user-view href) title))
 

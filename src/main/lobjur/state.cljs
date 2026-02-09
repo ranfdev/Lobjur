@@ -6,7 +6,7 @@
 (defn add-transducer [r]
   (swap! transducers conj r))
 
-(def state (atom nil))
+(def state (atom {}))
 (defn reduce-state [state action]
   (transduce
    (apply comp @transducers)

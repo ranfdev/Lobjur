@@ -1,6 +1,7 @@
 (ns lobjur.widgets.stories-list-view
   (:require
    ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Pango" :as Pango]
    ["gjs.gi.Gtk" :as Gtk]
    [clojure.string :as str]
    [lobjur.state :as state :refer [global-widgets]]
@@ -27,14 +28,17 @@
       (upvote-btn score)
       [Gtk/Box
        :orientation Gtk/Orientation.VERTICAL
+       :hexpand true
        :.append
        (list
         (if has-url?
-          [Gtk/LinkButton
-           :hexpand true
-           :uri url
-           :child
-           [Gtk/Label :label title :wrap true :xalign 0.0]
+          [Gtk/Label
+           :margin-top 4
+           :margin-bottom 4
+           :xalign 0.0
+           :label title
+           :wrap true
+           :wrap-mode Pango/WrapMode.WORD_CHAR
            :css_classes #js ["small" "button" "heading" "flat"]]
           [Gtk/Label :label title :wrap true :xalign 0.0
            :hexpand true
@@ -97,15 +101,27 @@
 (defn- lazy-story-widget
   "Render a story, fetching it first if it's a placeholder."
   [story]
-  (if (placeholder? story)
-    (let [res (r/resource #(api/GET (hal-link story :self)))]
-      [Adw/Bin
-       :child
-       (rv/resource-widget
-        res :lazy-story
-        {:on-ready (fn [full-story] (story-item-widget full-story))
-         :on-loading (fn [_] (story-item-placeholder-widget))})])
-    (story-item-widget story)))
+  (let [has-url? (not-empty (:url story))]
+    (if (placeholder? story)
+      (let [res (r/resource #(api/GET (hal-link story :self)))]
+        [Gtk/ListBoxRow
+         :activatable true
+         :story story
+         :.add_css_class (list "story-row")
+         :can_focus true
+         :child
+         [Adw/Bin
+          :child
+          (rv/resource-widget
+           res :lazy-story
+           {:on-ready (fn [full-story] (story-item-widget full-story))
+            :on-loading (fn [_] (story-item-placeholder-widget))})]])
+      [Gtk/ListBoxRow
+       :activatable true
+       :story story
+       :.add_css_class (list "story-row")
+       :can_focus true
+       :child (story-item-widget story)])))
 
 (defn stories-list-view [initial-url]
   (let [res (r/lazy-resource #(api/GET initial-url))]
@@ -139,7 +155,12 @@
                   (fn [stories]
                     (if (> (count stories) 0)
                       [Gtk/ListBox
+                       :activate-on-single-click true
                        :.add_css_class "navigation-sidebar"
+                       :$row-activated (fn [_ row]
+                                         (when-let [s (aget row "story")]
+                                           (let [u (or (get s :url) (aget s "url"))]
+                                             (state/send [:select-story (assoc s :initial-view (if (not-empty u) :article :comments))]))))
                        :.append
                        (map lazy-story-widget stories)]
                       [Adw/StatusPage
