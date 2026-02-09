@@ -84,7 +84,13 @@
        :valign Gtk/Align.CENTER
        :tooltip-text "View comments"
        :css_classes #js ["button" "flat"]
-       :$clicked #(state/send [:select-story (assoc story :initial-view :comments)])
+       :$clicked (fn [btn]
+                   (let [row (loop [w (.get_parent ^js btn)]
+                               (if (instance? Gtk/ListBoxRow w) w
+                                   (when w (recur (.get_parent ^js w)))))]
+                     (when row
+                       (.select_row ^js (.get_parent ^js row) row))
+                     (state/send [:select-story (assoc story :initial-view :comments)])))
        :child
        [Gtk/Overlay
         :child
