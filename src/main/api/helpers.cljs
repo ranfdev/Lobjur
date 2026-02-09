@@ -43,6 +43,14 @@
   [story]
   (hal-link story :external))
 
+(defn provider-comments-url
+  "Get the original provider's comments page URL for a story."
+  [story]
+  (case (:provider story)
+    "lobsters"   (str "https://lobste.rs/s/" (:id story))
+    "hackernews" (str "https://news.ycombinator.com/item?id=" (:id story))
+    nil))
+
 ;; ============================================================================
 ;; Smart HAL Navigation Helpers (Phase 2)
 ;; ============================================================================

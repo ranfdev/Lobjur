@@ -11,7 +11,7 @@
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
    [api.router :as api]
-   [api.helpers :refer [external-url]]
+   [api.helpers :refer [external-url provider-comments-url]]
    [rollui.core :refer [build-ui]]))
 
 (defn create-story-stack
@@ -104,18 +104,48 @@
            :select-story
             (let [url (external-url payload)
                   has-url? (some? url)
+                  comments-url (provider-comments-url payload)
                   initial-view (get payload :initial-view (if has-url? :article :comments))]
               (-> state
                   (set-content-root-with-stack payload initial-view)
                   (assoc :selected-story payload)
                   (assoc :show-view-switcher has-url?) ; Hide switcher if no URL
                   (assoc :content-header-end
-                         (when has-url?
-                           [Gtk/LinkButton
-                            :uri url
-                            :tooltip-text "Open in browser"
-                            :icon-name "window-new-symbolic"
-                            :css_classes #js ["image-button"]]))))
+                         [Gtk/MenuButton
+                          :icon-name "view-more-symbolic"
+                          :css_classes #js ["flat"]
+                          :popover
+                          [Gtk/Popover
+                           :child
+                           [Gtk/Box
+                            :orientation Gtk/Orientation.VERTICAL
+                            :.append
+                            (when has-url?
+                              [Gtk/Button
+                               :label "Copy Article Link"
+                               :.add_css_class "flat"
+                               :$clicked (fn [^js btn]
+                                           (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                             (.set ^js clipboard url))
+                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])
+                            :.append
+                            (when comments-url
+                              [Gtk/Button
+                               :label "Copy Comments Link"
+                               :.add_css_class "flat"
+                               :$clicked (fn [^js btn]
+                                           (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                             (.set ^js clipboard comments-url))
+                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])
+                            :.append
+                            (when has-url?
+                              [Gtk/Button
+                               :label "Open Externally"
+                               :.add_css_class "flat"
+                               :$clicked (fn [^js btn]
+                                           (Gtk/show_uri nil url 0)
+                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])]]])))
+
 
             :push-user
            (let [{:keys [href title]} payload]
