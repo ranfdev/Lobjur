@@ -114,37 +114,14 @@
                          [Gtk/MenuButton
                           :icon-name "view-more-symbolic"
                           :css_classes #js ["flat"]
-                          :popover
-                          [Gtk/Popover
-                           :child
-                           [Gtk/Box
-                            :orientation Gtk/Orientation.VERTICAL
-                            :.append
-                            (when has-url?
-                              [Gtk/Button
-                               :label "Copy Article Link"
-                               :.add_css_class "flat"
-                               :$clicked (fn [^js btn]
-                                           (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
-                                             (.set ^js clipboard url))
-                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])
-                            :.append
-                            (when comments-url
-                              [Gtk/Button
-                               :label "Copy Comments Link"
-                               :.add_css_class "flat"
-                               :$clicked (fn [^js btn]
-                                           (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
-                                             (.set ^js clipboard comments-url))
-                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])
-                            :.append
-                            (when has-url?
-                              [Gtk/Button
-                               :label "Open Externally"
-                               :.add_css_class "flat"
-                               :$clicked (fn [^js btn]
-                                           (Gtk/show_uri nil url 0)
-                                           (.popdown ^js (.get_ancestor btn Gtk/Popover)))])]]])))
+                          :menu-model (let [menu (Gio/Menu.)]
+                                        (when has-url?
+                                          (.append menu "Copy Article Link" "win.copy-article-link"))
+                                        (when comments-url
+                                          (.append menu "Copy Comments Link" "win.copy-comments-link"))
+                                        (when has-url?
+                                          (.append menu "Open Externally" "win.open-externally"))
+                                        menu)])))
 
 
             :push-user
@@ -238,7 +215,21 @@
       (.add_action (doto (Gio/SimpleAction. #js {:name "donate"})
                      (.connect "activate" #(Gtk/show_uri nil "https://github.com/sponsors/ranfdev" 0))))
       (.add_action (doto (Gio/SimpleAction. #js {:name "reload"})
-                     (.connect "activate" (fn [_ _] (state/send [:reload]))))))
+                     (.connect "activate" (fn [_ _] (state/send [:reload])))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "copy-article-link"})
+                     (.connect "activate" (fn [_ _]
+                                            (when-let [url (external-url (:selected-story @state/state))]
+                                              (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                                (.set ^js clipboard url)))))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "copy-comments-link"})
+                     (.connect "activate" (fn [_ _]
+                                            (when-let [url (provider-comments-url (:selected-story @state/state))]
+                                              (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                                (.set ^js clipboard url)))))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "open-externally"})
+                     (.connect "activate" (fn [_ _]
+                                            (when-let [url (external-url (:selected-story @state/state))]
+                                              (Gtk/show_uri nil url 0)))))))
     (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
