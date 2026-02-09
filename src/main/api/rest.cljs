@@ -1,7 +1,8 @@
 (ns api.rest
   "Composable REST routing combinators.
    A handler is (fn [request] -> Promise<HAL-resource> | nil)
-   where request is {:path \"/remaining/path\" :params {} :query {}}."
+   where request is {:path \"/remaining/path\" :method :GET :params {} :query {}
+                     :body nil :headers {}}."
   (:require [clojure.string :as str]))
 
 (defn- segment-match
@@ -71,12 +72,22 @@
   (fn [request]
     (middleware-fn handler request)))
 
+(defn method-route
+  "Match a specific HTTP method AND path pattern."
+  [method pattern handler-fn]
+  (fn [{:keys [path] :as request}]
+    (when (= method (:method request))
+      (when-let [{:keys [params]} (match-path pattern path)]
+        (handler-fn (merge request {:params (merge (:params request) params)}))))))
+
 (defn dispatch
   "Dispatch a request to a handler. Returns Promise.
    Converts nil (no match) into a rejected promise."
-  [handler path query-params]
-  (let [request {:path path :params {} :query (or query-params {})}
-        result (handler request)]
-    (if result
-      result
-      (js/Promise.reject (js/Error. (str "No route found for: " path))))))
+  ([handler request-map]
+   (let [request (merge {:method :GET :params {} :query {} :body nil :headers {}} request-map)
+         result (handler request)]
+     (if result
+       result
+       (js/Promise.reject (js/Error. (str "No route found for: " (:path request)))))))
+  ([handler path query-params]
+   (dispatch handler {:path path :query (or query-params {})})))

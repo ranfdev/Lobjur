@@ -1,6 +1,7 @@
 (ns api.helpers
   "Essential helpers for working with HAL API responses."
-  (:require [api.router :as router]))
+  (:require [api.router :as router]
+            [api.server :as s]))
 
 ;; ============================================================================
 ;; Basic HAL Extraction Helpers (Internal Use)
@@ -57,7 +58,7 @@
      => Promise<{:_embedded {:stories [...]}}>"
   [resource rel]
   (if-let [href (get-in resource [:_links rel :href])]
-    (router/GET href)
+    (s/GET router/server href)
     (js/Promise.reject
       (js/Error. (str "No link for relation: " rel)))))
 
@@ -80,7 +81,7 @@
   (if-let [embedded (get-in resource [:_embedded rel])]
     (js/Promise.resolve embedded)
     (if-let [href (get-in resource [:_links rel :href])]
-      (router/GET href)
+      (s/GET router/server href)
       (js/Promise.reject
         (js/Error. (str "No link or embedded resource for relation: " rel))))))
 

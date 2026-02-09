@@ -2,6 +2,7 @@
   "Comprehensive tests for api.helpers - HAL navigation and extraction helpers"
   (:require [cljs.test :refer-macros [deftest is testing async use-fixtures]]
             [cljs.core.async :refer [go <!]]
+            [clojure.string :as str]
             [api.helpers :as helpers]
             [api.router :as router]))
 
@@ -77,20 +78,26 @@
                    :next {:href "in-process://api/feeds/lobsters/hot?page=3"}}
           :_embedded {:stories [{:id 4 :title "Story 4" :score 40}]}}}))
 
-;; Save original router/GET
-(def original-get router/GET)
+;; Save original router/server
+(def original-server router/server)
 
-;; Mock router/GET for testing
-(set! router/GET
-  (fn [url]
-    (if-let [response (get @mock-responses url)]
-      (js/Promise.resolve response)
-      (js/Promise.reject (js/Error. (str "Mock not found for URL: " url))))))
+;; Mock router/server for testing
+(set! router/server
+  (fn [request]
+    (let [path (:path request)
+          query (:query request)
+          lookup-url (if (seq query)
+                       (str "in-process://api" path "?"
+                            (str/join "&" (map (fn [[k v]] (str (name k) "=" v)) query)))
+                       (str "in-process://api" path))]
+      (if-let [response (get @mock-responses lookup-url)]
+        (js/Promise.resolve response)
+        (js/Promise.reject (js/Error. (str "Mock not found for URL: " lookup-url)))))))
 
 ;; Restore original after tests
 (use-fixtures :once
   {:before (fn [])
-   :after (fn [] (set! router/GET original-get))})
+   :after (fn [] (set! router/server original-server))})
 
 ;; ============================================================================
 ;; Tests: Basic HAL Extraction Helpers

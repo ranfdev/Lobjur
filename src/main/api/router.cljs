@@ -1,8 +1,11 @@
 (ns api.router
   (:require
+   [clojure.string :as str]
    [api.rest :as r]
    [api.hal :as hal]
    [api.url :as url]
+   [api.server :as s]
+   [api.debug :as debug]
    [lobjur.utils.http :as http]
    [lobster.routes :as lobster]
    [hackernews.routes :as hn]))
@@ -53,19 +56,23 @@
                  (catch js/Error _e
                    response))))))
 
+;; --- Server (handler + middleware) ---
+
+(def server
+  "The main server: routes external URLs to HTTP, in-process URLs to the app handler.
+   Wrapped with history recording for REPL debugging."
+  (-> (fn [request]
+        (let [path (:path request)]
+          (if (or (str/starts-with? path "https://")
+                  (str/starts-with? path "http://"))
+            (get-external path)
+            (r/dispatch app request))))
+      (s/with-history debug/*history*)))
+
 ;; --- Public API ---
 
 (defn GET
-  "Execute a GET request against the router.
-   Supports both in-process and external URLs:
-   - Relative paths (e.g., '/feeds/lobsters') -> in-process
-   - in-process://api/... -> in-process
-   - https://... or http://... -> external HTTP request
-   
-   Returns a Promise that resolves to a HAL resource (in-process) or response data (external)."
+  "Execute a GET request. Backward-compatible API.
+   Supports both in-process and external URLs."
   [request-url]
-  (let [{:keys [scheme path query-params]} (url/parse-url request-url)]
-    (case scheme
-      :in-process (r/dispatch app path query-params)
-      (:https :http) (get-external path)
-      (js/Promise.reject (js/Error. (str "Unsupported URL scheme: " scheme))))))
+  (s/GET server request-url))

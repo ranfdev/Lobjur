@@ -2,7 +2,8 @@
   "Test runner for GJS environment"
   (:require [cljs.test :refer-macros [run-tests]]
             [test.api.helpers-test]
-            [test.api.hal-test]))
+            [test.api.hal-test]
+            [test.api.server-test]))
 
 (defn main []
   ;; Enable console output for test results
@@ -11,7 +12,8 @@
   ;; Run all tests
   (println "\n=== Running Tests ===")
   (run-tests 'test.api.helpers-test
-             'test.api.hal-test)
+             'test.api.hal-test
+             'test.api.server-test)
   
   ;; Give async tests time to complete before exiting
   ;; In a real scenario, you'd want to track test completion more carefully
