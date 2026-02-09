@@ -44,7 +44,7 @@
 
 (defn domain-stories [domain & {:as params}]
   (.then
-   (http/get (rel "domain/" (str domain ".json")) {:params params})
+   (http/get (rel "domains/" (str domain ".json")) {:params params})
    parse-json))
 
 (defn tags []
