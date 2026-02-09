@@ -22,7 +22,7 @@
    :title_widget [Adw/Bin
                   :visible (derived-atom [state/state]
                                          :content-top-view-switcher
-                                         #(and (get % :show-view-switcher false) (not (get % :mobile-bottom-view-switcher false))))
+                                         #(get % :show-view-switcher false))
                    :child [Adw/ViewSwitcher
                           ::rollui/ref-in [global-widgets :content-view-switcher]
                           :policy Adw/ViewSwitcherPolicy.WIDE
@@ -64,6 +64,7 @@
     :child
     [Adw/NavigationView
      ::rollui/ref-in [global-widgets :content-nav-view]
+     :width-request 360
      :.add
      [Adw/NavigationPage
       :title "Story"
@@ -75,7 +76,7 @@
                          ::rollui/ref-in [global-widgets :content-view-switcher-bar]
                          :visible (derived-atom [state/state]
                                                 :content-bottom-view-switcher
-                                                #(and (get % :show-view-switcher false) (get % :mobile-bottom-view-switcher false)))
+                                                #(get % :show-view-switcher false))
                          :reveal true]
        :content [Adw/Bin
                  ::rollui/ref-in [global-widgets :content-detail-bin]
