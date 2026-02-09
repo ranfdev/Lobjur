@@ -257,13 +257,15 @@
     (let [bp (Adw/Breakpoint.new
                (Adw/BreakpointCondition.new_length
                  Adw/BreakpointConditionLengthType.MAX_WIDTH
-                 500.0
+                 720.0
                  Adw/LengthUnit.SP))
           split-view (:split-view @state/global-widgets)]
       (.connect bp "apply" (fn [_]
-                             (.set_collapsed ^js split-view true)))
+                             (.set_collapsed ^js split-view true)
+                             (swap! state/state assoc :mobile true)))
       (.connect bp "unapply" (fn [_]
-                               (.set_collapsed ^js split-view false)))
+                               (.set_collapsed ^js split-view false)
+                               (swap! state/state assoc :mobile false)))
       (.add_breakpoint win bp))
     (println "Window created:" win)
     (doto win

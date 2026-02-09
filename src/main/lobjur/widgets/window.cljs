@@ -22,7 +22,8 @@
    :title_widget [Adw/Bin
                   :visible (derived-atom [state/state]
                                          :content-top-view-switcher
-                                         #(get % :show-view-switcher false))
+                                         #(and (get % :show-view-switcher false)
+                                               (not (get % :mobile false))))
                    :child [Adw/ViewSwitcher
                           ::rollui/ref-in [global-widgets :content-view-switcher]
                           :policy Adw/ViewSwitcherPolicy.WIDE
@@ -76,7 +77,8 @@
                          ::rollui/ref-in [global-widgets :content-view-switcher-bar]
                          :visible (derived-atom [state/state]
                                                 :content-bottom-view-switcher
-                                                #(get % :show-view-switcher false))
+                                                #(and (get % :show-view-switcher false)
+                                                      (get % :mobile false)))
                          :reveal true]
        :content [Adw/Bin
                  ::rollui/ref-in [global-widgets :content-detail-bin]
