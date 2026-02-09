@@ -1,5 +1,6 @@
 (ns hackernews.routes
   (:require
+   [clojure.string :as str]
    [api.rest :as r]
    [api.hal :as hal]
    [hackernews.core :as hn]
@@ -38,7 +39,8 @@
 (defn- normalize-hn-comment
   "Normalize a HN comment to HAL format (shallow, no embedded children)."
   [comment]
-  (let [id (:id comment)]
+  (let [id (:id comment)
+        kids (:kids comment)]
     {:id         id
      :provider   "hackernews"
      :text       (html->text (:text comment))
@@ -47,9 +49,9 @@
                        (.toISOString)))
      :author     (:by comment)
      :score      0
-     :_links     (hal/comment-links "hackernews" id
-                                    :author (:by comment)
-                                    :replies (seq (:kids comment)))}))
+     :_links     (cond-> {:self (hal/link (str "/hackernews/comments/" id))}
+                   (:by comment) (assoc :author (hal/link (str "/hackernews/users/" (:by comment))))
+                   (seq kids) (assoc :replies (hal/link (str "/hackernews/comments/" id "/replies?kids=" (str/join "," kids)))))}))
 
 (defn- filter-comments
   "Filter out deleted and dead comments."
@@ -114,18 +116,28 @@
                    :submitter     (:by story)
                    :tags          []}))))))
 
-(defn- comment-replies-handler [{:keys [params]}]
-  (-> (hn/item (:id params))
-      (.then (fn [comment]
-               (let [kid-ids (or (:kids comment) [])
-                     comment-id (:id comment)]
-                 (if (empty? kid-ids)
-                   (hal/collection (str "/hackernews/comments/" comment-id "/replies") :replies [])
-                   (-> (js/Promise.all (mapv hn/item kid-ids))
-                       (.then (fn [kids]
-                                (hal/collection
-                                 (str "/hackernews/comments/" comment-id "/replies") :replies
-                                 (mapv normalize-hn-comment (filter-comments kids))))))))))))
+(defn- comment-replies-handler [{:keys [params query]}]
+  (let [comment-id (:id params)
+        kids-param (:kids query)]
+    (if kids-param
+      ;; Fast path: kid IDs provided in query, skip parent re-fetch
+      (let [kid-ids (mapv #(js/parseInt % 10) (str/split kids-param #","))]
+        (-> (js/Promise.all (mapv hn/item kid-ids))
+            (.then (fn [kids]
+                     (hal/collection
+                      (str "/hackernews/comments/" comment-id "/replies") :replies
+                      (mapv normalize-hn-comment (filter-comments kids)))))))
+      ;; Fallback: fetch parent comment to get kids
+      (-> (hn/item comment-id)
+          (.then (fn [comment]
+                   (let [kid-ids (or (:kids comment) [])]
+                     (if (empty? kid-ids)
+                       (hal/collection (str "/hackernews/comments/" comment-id "/replies") :replies [])
+                       (-> (js/Promise.all (mapv hn/item kid-ids))
+                           (.then (fn [kids]
+                                    (hal/collection
+                                     (str "/hackernews/comments/" comment-id "/replies") :replies
+                                     (mapv normalize-hn-comment (filter-comments kids))))))))))))))
 
 (defn- comments-handler [{:keys [params]}]
   (-> (hn/item (:id params))
