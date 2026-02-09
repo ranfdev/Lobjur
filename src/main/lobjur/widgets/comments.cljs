@@ -11,11 +11,12 @@
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
 
-(defn- comment-content-widget [comment]
+(defn- comment-content-widget [comment depth]
   (let [{:keys [text created_at author]} comment
         author-href (hal-link comment :author)]
     [Gtk/Box
      :.add_css_class "comment"
+     :.add_css_class (str "comment-depth-" (mod depth 6))
      :orientation Gtk/Orientation.VERTICAL
      :.append
      (list
@@ -39,38 +40,41 @@
        :margin-bottom 8
        :xalign 0.0])]))
 
-(defn comment-tree-widget [comment]
-  [Gtk/Box
-   :orientation Gtk/Orientation.VERTICAL
-   :spacing 4
-   :.append
-   (comment-content-widget comment)
-   :.append
-   (if-let [embedded-replies (get-in comment [:_embedded :replies])]
-     ;; Lobsters: embedded, render directly
-     [Gtk/Box
-      :orientation Gtk/Orientation.VERTICAL
-      :margin-start 16
-      :spacing 4
-      :.append
-      (map comment-tree-widget embedded-replies)]
-     ;; HN: linked, fetch lazily with resource
-     (when (get-in comment [:_links :replies :href])
-       (let [replies-res (r/resource #(fetch-collection comment :replies {:default []}))]
-         [Adw/Bin
-          :margin-start 16
-          :child
-          (rv/resource-widget
-           replies-res (keyword (str "replies-" (:id comment)))
-           {:on-ready
-            (fn [replies]
-              (if (seq replies)
-                [Gtk/Box
-                 :orientation Gtk/Orientation.VERTICAL
-                 :spacing 4
-                 :.append
-                 (map comment-tree-widget replies)]
-                [Gtk/Box]))})])))])
+(defn comment-tree-widget
+  ([comment] (comment-tree-widget comment 0))
+  ([comment depth]
+   [Gtk/Box
+    :orientation Gtk/Orientation.VERTICAL
+    :spacing 4
+    :.append
+    (comment-content-widget comment depth)
+    :.append
+    (if-let [embedded-replies (get-in comment [:_embedded :replies])]
+      ;; Lobsters: embedded, render directly
+      [Gtk/Box
+       :orientation Gtk/Orientation.VERTICAL
+       :margin-start 12
+       :spacing 4
+       :.append
+       (map #(comment-tree-widget % (inc depth)) embedded-replies)]
+      ;; HN: linked, fetch lazily with resource
+      (when (get-in comment [:_links :replies :href])
+        (let [replies-res (r/resource #(fetch-collection comment :replies {:default []}))]
+          [Adw/Bin
+           :margin-start 12
+           :child
+           (rv/resource-widget
+            replies-res (keyword (str "replies-" (:id comment)))
+            {:on-ready
+             (fn [replies]
+               (if (seq replies)
+                 [Gtk/Box
+                  :orientation Gtk/Orientation.VERTICAL
+                  :spacing 4
+                  :.append
+                  (map #(comment-tree-widget % (inc depth)) replies)]
+                 [Gtk/Box]))})])))]))
+
 
 (defn comments-view [{:keys [title url score tags] :as story}]
   (let [comments-href (get-in story [:_links :comments :href])

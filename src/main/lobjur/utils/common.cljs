@@ -10,7 +10,8 @@
   (when html
     (-> html
         (str/replace #"<br\s*/?>" "\n")
-        (str/replace #"</?p>" "\n")
+        (str/replace #"</p>" "\n\n")
+        (str/replace #"<p>" "")
         (str/replace #"<[^>]*>" "")
         (str/replace "&amp;" "&")
         (str/replace "&lt;" "<")
@@ -19,5 +20,6 @@
         (str/replace "&#x27;" "'")
         (str/replace "&#x2F;" "/")
         (str/replace "&nbsp;" " ")
+        (str/replace #"\n{3,}" "\n\n")
         (str/trim))))
 

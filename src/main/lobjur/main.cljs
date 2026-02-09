@@ -158,6 +158,12 @@
     border-left: 2px solid alpha(@theme_fg_color, 0.4);
     border-radius: 4px;
   }
+  .comment-depth-0 { border-left-color: @blue_3; }
+  .comment-depth-1 { border-left-color: @green_3; }
+  .comment-depth-2 { border-left-color: @yellow_3; }
+  .comment-depth-3 { border-left-color: @orange_3; }
+  .comment-depth-4 { border-left-color: @red_3; }
+  .comment-depth-5 { border-left-color: @purple_3; }
   .tag {
       min-height: 16px;
       min-width: 16px;
