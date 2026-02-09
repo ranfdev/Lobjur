@@ -52,7 +52,7 @@
         :css_classes #js ["small" "button" "flat" "heading"]
         :$clicked #(state/send [:push-user {:href author-href :title author}])]
        :.append
-       [Gtk/Label :label (time-ago created_at) :hexpand true]
+       [Gtk/Label :label (time-ago created_at) :hexpand true :halign Gtk/Align.START]
        :.append
        [Gtk/MenuButton
         :icon-name "view-more-symbolic"
@@ -114,54 +114,55 @@
         res (r/resource #(-> (api/GET comments-href)
                              (.then (fn [response]
                                       (fetch-collection response :comments)))))]
-    [Adw/Clamp
+    [Gtk/ScrolledWindow
      :hexpand true
-     :.add_css_class "background"
+     :vexpand true
+     :hscrollbar_policy Gtk/PolicyType.NEVER
      :child
-     [Gtk/Box
-      :orientation Gtk/Orientation.VERTICAL
-      :spacing 8
-      :margin-top 8
-      :margin-start 8
-      :margin-end 8
-      :.append
+     [Adw/Clamp
+      :.add_css_class "background"
+      :child
       [Gtk/Box
-       :.append
-       (list
-        (upvote-btn score)
-        [Gtk/LinkButton
-         :hexpand true
-         :uri url
-         :child
-         [Gtk/Label :label title :wrap true :wrap-mode Pango/WrapMode.WORD_CHAR :xalign 0.0]
-         :css_classes #js ["button" "title-4" "flat"]])]
-      :.append
-      [Gtk/Box
+       :orientation Gtk/Orientation.VERTICAL
        :spacing 8
+       :margin-top 8
+       :margin-start 8
+       :margin-end 8
+       :margin-bottom 24
        :.append
-       (when domain-href
-         (let [host (some-> (external-url story)
-                            (str/replace #"^https?://" "")
-                            (str/replace #"/.*" ""))]
-           [Gtk/Button
-            :.add_css_class (list "small" "button" "flat" "caption")
-            :halign Gtk/Align.START
-            :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
-            :label host]))
+       [Gtk/Box
+        :.append
+        (list
+         (upvote-btn score)
+         [Gtk/LinkButton
+          :hexpand true
+          :uri url
+          :child
+          [Gtk/Label :label title :wrap true :wrap-mode Pango/WrapMode.WORD_CHAR :xalign 0.0]
+          :css_classes #js ["button" "title-4" "flat"]])]
        :.append
-       (for [tl tag-story-links
-             :let [t (:name tl)
-                   href (:href tl)]]
-         [Gtk/Button
-          :label t
-          :valign Gtk/Align.CENTER
-          :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
-          :.add_css_class (list "small" "flat" "tag" "caption")])]
-      :.append
-      [Gtk/ScrolledWindow
-       :propagate-natural-height true
-       :vexpand true
-       :child
+       [Gtk/Box
+        :spacing 8
+        :.append
+        (when domain-href
+          (let [host (some-> (external-url story)
+                             (str/replace #"^https?://" "")
+                             (str/replace #"/.*" ""))]
+            [Gtk/Button
+             :.add_css_class (list "small" "button" "flat" "caption")
+             :halign Gtk/Align.START
+             :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
+             :label host]))
+        :.append
+        (for [tl tag-story-links
+              :let [t (:name tl)
+                    href (:href tl)]]
+          [Gtk/Button
+           :label t
+           :valign Gtk/Align.CENTER
+           :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
+           :.add_css_class (list "small" "flat" "tag" "caption")])]
+       :.append
        [Adw/Bin
         :child
         (rv/resource-widget
