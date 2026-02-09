@@ -158,23 +158,36 @@
                                      (str "/hackernews/comments/" comment-id "/replies") :replies
                                      (mapv normalize-hn-comment (filter-comments kids))))))))))))))
 
-(defn- comments-handler [{:keys [params]}]
-  (-> (hn/item (:id params))
-      (.then (fn [story]
-               (let [kid-ids (or (:kids story) [])
-                     story-id (:id story)]
-                 (if (empty? kid-ids)
+(defn- comments-handler [{:keys [params query]}]
+  (let [page (js/parseInt (or (:page query) "1") 10)
+        story-id (:id params)
+        base-href (str "/hackernews/stories/" story-id "/comments")
+        kids-param (:kids query)]
+    (-> (if kids-param
+          ;; Fast path: kid IDs in query param, skip story re-fetch
+          (js/Promise.resolve (mapv #(js/parseInt % 10) (str/split kids-param #",")))
+          ;; First call: fetch story to get kid IDs
+          (-> (hn/item story-id)
+              (.then #(or (:kids %) []))))
+        (.then (fn [all-kid-ids]
+                 (if (empty? all-kid-ids)
                    (hal/resource
-                    {:self  (hal/link (str "/hackernews/stories/" story-id "/comments"))
+                    {:self  (hal/link base-href)
                      :story (hal/link (str "/hackernews/stories/" story-id))}
                     {} {:comments []})
-                   (-> (js/Promise.all (mapv hn/item kid-ids))
-                       (.then (fn [kids]
-                                (hal/resource
-                                 {:self  (hal/link (str "/hackernews/stories/" story-id "/comments"))
-                                  :story (hal/link (str "/hackernews/stories/" story-id))}
-                                 {}
-                                 {:comments (mapv normalize-hn-comment (filter-comments kids))}))))))))))
+                   (let [page-ids (hn/paginate-ids all-kid-ids page)
+                         kids-str (str/join "," all-kid-ids)]
+                     (-> (js/Promise.all (mapv hn/item page-ids))
+                         (.then (fn [kids]
+                                  (-> (hal/resource
+                                       {:self  (hal/link base-href)
+                                        :story (hal/link (str "/hackernews/stories/" story-id))}
+                                       {}
+                                       {:comments (mapv normalize-hn-comment (filter-comments kids))})
+                                      (hal/paginated base-href page
+                                                     :has-next (>= (count page-ids) hn/page-size)
+                                                     :has-prev (> page 1)
+                                                     :query-params {:kids kids-str}))))))))))))
 (defn- user-handler [{:keys [params]}]
   (let [username (:username params)]
     (-> (hn/user username)

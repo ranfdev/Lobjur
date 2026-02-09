@@ -9,9 +9,9 @@
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
-   [api.helpers :refer [external-url fetch-collection hal-link]]
+   [api.helpers :refer [external-url fetch-collection hal-link has-relation? next-page prev-page]]
    [lobjur.utils.common :refer [html->text]]
-   [rollui.core :as rollui]
+   [rollui.core :as rollui :refer [derived-atom]]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
 
@@ -153,9 +153,7 @@
                                                    (some-> (:text full-story)
                                                            not-empty
                                                            html->text))))))
-        res (r/resource #(-> (api/GET comments-href)
-                             (.then (fn [response]
-                                      (fetch-collection response :comments)))))]
+        res (r/resource #(api/GET comments-href))]
     [Gtk/ScrolledWindow
      :hexpand true
      :vexpand true
@@ -229,15 +227,38 @@
         (rv/resource-widget
          res :comments
          {:on-ready
-          (fn [comments]
-            (if (seq comments)
-              [Gtk/Box
-               :orientation Gtk/Orientation.VERTICAL
-               :spacing 8
-               :.append
-               (for [c comments]
-                 (comment-tree-widget c))]
-              [Adw/StatusPage
-               :title "No comments available"
-               :icon-name "user-invisible-symbolic"
-               :.add_css_class "compact"]))})]]]]))
+          (fn [response]
+            (let [comments (get-in response [:_embedded :comments] [])]
+              (if (seq comments)
+                [Gtk/Box
+                 :orientation Gtk/Orientation.VERTICAL
+                 :spacing 8
+                 :.append
+                 (for [c comments]
+                   (comment-tree-widget c))
+                 :.append
+                 [Gtk/Box
+                  :hexpand true
+                  :homogeneous true
+                  :.append
+                  [Gtk/Button
+                   :halign Gtk/Align.START
+                   :label "Previous"
+                   :sensitive (derived-atom [res] :prev-comments-page
+                               #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
+                   :$clicked (fn [_] (when-let [data (r/rdata @res)]
+                                       (r/resource-fetch! res (fn [] (prev-page data)))))]
+                  :.append
+                  [Gtk/Label :label "•"]
+                  :.append
+                  [Gtk/Button
+                   :halign Gtk/Align.END
+                   :label "Next"
+                   :sensitive (derived-atom [res] :next-comments-page
+                               #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
+                   :$clicked (fn [_] (when-let [data (r/rdata @res)]
+                                       (r/resource-fetch! res (fn [] (next-page data)))))]]]
+                [Adw/StatusPage
+                 :title "No comments available"
+                 :icon-name "user-invisible-symbolic"
+                 :.add_css_class "compact"])))})]]]]))
