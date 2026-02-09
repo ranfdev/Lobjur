@@ -6,6 +6,7 @@
    [api.url :as url]
    [api.server :as s]
    [api.debug :as debug]
+   [api.sources :as sources]
    [lobjur.utils.http :as http]
    [lobster.routes :as lobster]
    [hackernews.routes :as hn]))
@@ -24,16 +25,17 @@
   (js/Promise.resolve
    (hal/collection
     "/feeds" :feeds
-    [{:name "Lobsters"
-      :_links {:self   (hal/link "/feeds/lobsters")
-               :hot    (hal/link "/feeds/lobsters/hot")
-               :newest (hal/link "/feeds/lobsters/newest")
-               :tags   (hal/link "/feeds/lobsters/tags")}}
-     {:name "Hacker News"
-      :_links {:self   (hal/link "/feeds/hackernews")
-               :top    (hal/link "/feeds/hackernews/top")
-               :newest (hal/link "/feeds/hackernews/newest")
-               :best   (hal/link "/feeds/hackernews/best")}}])))
+    (mapv (fn [src]
+            {:name (:name src)
+             :_links (merge
+                      {:self (hal/link (str "/feeds/" (:id src)))}
+                      (into {}
+                            (map (fn [f] [(:rel f) (hal/link (str "/feeds/" (:id src) "/" (:id f)))]))
+                            (:feeds src))
+                      (into {}
+                            (map (fn [[k v]] [k (hal/link v)]))
+                            (:extra-links src)))})
+          sources/sources))))
 
 ;; --- Composed application handler ---
 

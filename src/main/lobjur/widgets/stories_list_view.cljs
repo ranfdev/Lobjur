@@ -7,6 +7,7 @@
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [upvote-btn time-ago]]
    [api.router :as api]
+   [api.sources :as sources]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [rollui.resource :as r]
@@ -189,20 +190,12 @@
                      #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
          :$clicked (fn [_] (when-let [data (r/rdata @res)]
                           (r/resource-fetch! res (fn [] (next-page data)))))]]]]]))
-(def sources
-  [{:name "Lobsters"
-    :feeds [{:title "Hottest" :url "/feeds/lobsters/hot" :id "hot" :icon "power-profile-performance-symbolic"}
-            {:title "Active" :url "/feeds/lobsters/newest" :id "active" :icon "audio-speakers-symbolic"}]}
-   {:name "Hacker News"
-    :feeds [{:title "Top" :url "/feeds/hackernews/top" :id "top" :icon "starred-symbolic"}
-            {:title "New" :url "/feeds/hackernews/newest" :id "new" :icon "document-new-symbolic"}
-            {:title "Best" :url "/feeds/hackernews/best" :id "best" :icon "emoji-flags-symbolic"}]}])
-
 (defn build-view-stack [source]
-  (let [stack (Adw/ViewStack.)]
-    (doseq [{:keys [title url id icon]} (:feeds source)]
+  (let [stack (Adw/ViewStack.)
+        src-id (:id source)]
+    (doseq [{:keys [title id icon]} (:feeds source)]
       (doto (.add_titled stack
-                         (build-ui (stories-list-view url))
+                         (build-ui (stories-list-view (str "/feeds/" src-id "/" id)))
                          id
                          title)
         (.set_icon_name icon)))
@@ -210,17 +203,17 @@
 
 (defn home-stories []
   (let [content-bin (Adw/Bin.)
-        initial-stack (build-view-stack (first sources))
+        initial-stack (build-view-stack (first sources/sources))
         dropdown (Gtk/DropDown.
                   #js {:model (Gtk/StringList.
-                               #js {:strings #js ["Lobsters" "Hacker News"]})})]
+                               #js {:strings (into-array (mapv :name sources/sources))})})]
     (.set_child content-bin initial-stack)
     (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
       (.set_stack ^js bar initial-stack))
     (.connect dropdown "notify::selected"
               (fn [_]
                 (let [idx (.get_selected dropdown)
-                      source (nth sources idx)
+                      source (nth sources/sources idx)
                       new-stack (build-view-stack source)]
                   (.set_child content-bin new-stack)
                   (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
