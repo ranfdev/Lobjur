@@ -10,6 +10,7 @@
    [lobjur.widgets.shared :refer [time-ago upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url fetch-collection hal-link]]
+   [lobjur.utils.common :refer [html->text]]
    [rollui.core :as rollui]
    [rollui.resource :as r]
    [rollui.resource-view :as rv]))
@@ -111,6 +112,14 @@
   (let [comments-href (get-in story [:_links :comments :href])
         domain-href (hal-link story :domain-stories)
         tag-story-links (get-in story [:_links :tag-stories])
+        self-href (hal-link story :self)
+        ;; Fetch story text for self-posts (no external URL)
+        story-text-res (when (and (not (not-empty url)) self-href)
+                         (r/resource #(-> (api/GET self-href)
+                                          (.then (fn [full-story]
+                                                   (some-> (:text full-story)
+                                                           not-empty
+                                                           html->text))))))
         res (r/resource #(-> (api/GET comments-href)
                              (.then (fn [response]
                                       (fetch-collection response :comments)))))]
@@ -162,6 +171,25 @@
            :valign Gtk/Align.CENTER
            :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
            :.add_css_class (list "small" "flat" "tag" "caption")])]
+       :.append
+       (when story-text-res
+         [Adw/Bin
+          :child
+          (rv/resource-widget
+           story-text-res :story-text
+           {:on-ready
+            (fn [text]
+              (if text
+                [Gtk/Label
+                 :label text
+                 :wrap true
+                 :wrap-mode Pango/WrapMode.WORD_CHAR
+                 :selectable true
+                 :xalign 0.0
+                 :margin-start 8
+                 :margin-end 8]
+                [Gtk/Box]))
+            :on-loading (fn [_] [Gtk/Box])})])
        :.append
        [Adw/Bin
         :child
