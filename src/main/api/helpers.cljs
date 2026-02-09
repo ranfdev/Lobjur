@@ -51,6 +51,14 @@
     "hackernews" (str "https://news.ycombinator.com/item?id=" (:id story))
     nil))
 
+(defn provider-user-url
+  "Get the original provider's user profile URL."
+  [user]
+  (case (:provider user)
+    "lobsters"   (str "https://lobste.rs/~" (:username user))
+    "hackernews" (str "https://news.ycombinator.com/user?id=" (:username user))
+    nil))
+
 ;; ============================================================================
 ;; Smart HAL Navigation Helpers (Phase 2)
 ;; ============================================================================

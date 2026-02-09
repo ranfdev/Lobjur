@@ -4,6 +4,7 @@
    ["gjs.gi.Gdk" :as Gdk]
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Gio" :as Gio]
+   [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
     [lobjur.widgets.webview :as webview]
@@ -11,7 +12,7 @@
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
    [api.router :as api]
-   [api.helpers :refer [external-url provider-comments-url]]
+   [api.helpers :refer [external-url provider-comments-url provider-user-url]]
    [rollui.core :refer [build-ui]]))
 
 (defn create-story-stack
@@ -125,8 +126,30 @@
 
 
             :push-user
-           (let [{:keys [href title]} payload]
-             (push-content-page state (user/user-view href) title))
+           (let [{:keys [href title]} payload
+                 provider (cond
+                            (str/includes? href "lobsters") "lobsters"
+                            (str/includes? href "hackernews") "hackernews"
+                            :else nil)
+                 profile-url (when provider
+                               (provider-user-url {:provider provider :username title}))
+                 menu (when profile-url
+                        (doto (Gio/Menu.)
+                          (.append "Copy Profile Link" "win.copy-user-link")
+                          (.append "Open Profile" "win.open-user-externally")))
+                 page (Adw/NavigationPage.
+                       #js {:child (build-ui
+                                    [Adw/ToolbarView
+                                     :.add_top_bar [Adw/HeaderBar
+                                                    :.pack_end (when menu
+                                                                 [Gtk/MenuButton
+                                                                  :icon-name "view-more-symbolic"
+                                                                  :css_classes #js ["flat"]
+                                                                  :menu-model menu])]
+                                     :content (user/user-view href)])
+                            :title title})]
+             (.push ^js (:content-nav-view @state/global-widgets) page)
+             (assoc state :selected-user {:username title :provider provider}))
 
            :push-user-stories
            (let [{:keys [href title]} payload]
@@ -235,7 +258,18 @@
       (.add_action (doto (Gio/SimpleAction. #js {:name "open-externally"})
                      (.connect "activate" (fn [_ _]
                                             (when-let [url (external-url (:selected-story @state/state))]
-                                              (Gtk/show_uri nil url 0)))))))
+                                              (Gtk/show_uri nil url 0))))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "copy-user-link"})
+                     (.connect "activate" (fn [_ _]
+                                            (when-let [{:keys [username provider]} (:selected-user @state/state)]
+                                              (when-let [url (provider-user-url {:username username :provider provider})]
+                                                (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
+                                                  (.set ^js clipboard url))))))))
+      (.add_action (doto (Gio/SimpleAction. #js {:name "open-user-externally"})
+                     (.connect "activate" (fn [_ _]
+                                            (when-let [{:keys [username provider]} (:selected-user @state/state)]
+                                              (when-let [url (provider-user-url {:username username :provider provider})]
+                                                (Gtk/show_uri nil url 0))))))))
     (.present win))
   (Gtk/StyleContext.add_provider_for_display
    (Gdk/Display.get_default)
