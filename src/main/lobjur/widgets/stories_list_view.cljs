@@ -82,6 +82,7 @@
            :label (time-ago created_at)])])]
       [Gtk/Button
        :valign Gtk/Align.CENTER
+       :tooltip-text "View comments"
        :css_classes #js ["button" "flat"]
        :$clicked #(state/send [:select-story story])
        :child

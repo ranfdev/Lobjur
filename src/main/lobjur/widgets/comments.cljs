@@ -56,6 +56,7 @@
        :.append
        [Gtk/MenuButton
         :icon-name "view-more-symbolic"
+        :tooltip-text "Comment options"
         :css_classes #js ["flat" "small" "comment-revealer-btn"]
         :valign Gtk/Align.CENTER
         :menu-model menu]]

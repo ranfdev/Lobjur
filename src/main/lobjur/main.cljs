@@ -92,6 +92,7 @@
                  (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
                  (assoc :sidebar-header-end [Gtk/MenuButton
                                              :icon-name "open-menu-symbolic"
+                                             :tooltip-text "Main menu"
                                              :menu-model (doto (Gio/Menu.)
                                                            (.append "Reload" "win.reload")
                                                            (.append "About" "win.about")
@@ -113,6 +114,7 @@
                   (assoc :show-view-switcher has-url?) ; Hide switcher if no URL
                   (assoc :content-header-end
                          [Gtk/MenuButton
+                          :tooltip-text "Story options"
                           :icon-name "view-more-symbolic"
                           :css_classes #js ["flat"]
                           :menu-model (let [menu (Gio/Menu.)]
@@ -144,6 +146,7 @@
                                                     :.pack_end (when menu
                                                                  [Gtk/MenuButton
                                                                   :icon-name "view-more-symbolic"
+                                                                  :tooltip-text "User options"
                                                                   :css_classes #js ["flat"]
                                                                   :menu-model menu])]
                                      :content (user/user-view href)])
