@@ -8,6 +8,7 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
+   [lobjur.utils.common :refer [html->text]]
    [api.router :as api]
    [api.helpers :refer [hal-link]]
    [rollui.resource :as r]
@@ -20,14 +21,20 @@
       (.then #(Gio/MemoryInputStream.new_from_bytes %))
       (.then #(Pixbuf/Pixbuf.new_from_stream % nil))))
 
-(defn loaded-user-view [{:keys [username avatar_url karma] :as user}]
+(defn loaded-user-view [{:keys [username avatar_url karma about created_at] :as user}]
   (let [grid (Gtk/Grid. #js {:row_spacing 8
                              :column_spacing 8
                              :halign Gtk/Align.START})
-        stories-href (hal-link user :stories)]
-    (doseq [[i [k v]] (zipmap (range) user)
+        stories-href (hal-link user :stories)
+        about-text (when (seq about) (html->text about))
+        fields (cond-> []
+                 (seq about-text)
+                 (conj ["About" about-text])
+                 (seq created_at)
+                 (conj ["Joined" created_at]))]
+    (doseq [[i [k v]] (zipmap (range) fields)
             :let [key-label
-                  (Gtk/Label. #js {:label (name k)
+                  (Gtk/Label. #js {:label k
                                    :yalign 0.0
                                    :xalign 0.0})
                   _ (.add_css_class key-label "heading")
