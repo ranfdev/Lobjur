@@ -90,13 +90,18 @@
              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
              (-> state
                  (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
-                 (assoc :sidebar-header-end [Gtk/MenuButton
-                                             :icon-name "open-menu-symbolic"
-                                             :tooltip-text "Main menu"
-                                             :menu-model (doto (Gio/Menu.)
-                                                           (.append "Reload" "win.reload")
-                                                           (.append "About" "win.about")
-                                                           (.append "Donate" "win.donate"))])))
+                 (assoc :sidebar-header-end [Gtk/Box
+                                             :.append [Gtk/Button
+                                                       :icon-name "edit-find-symbolic"
+                                                       :tooltip-text "Search"
+                                                       :$clicked #(state/send [:push-search])]
+                                             :.append [Gtk/MenuButton
+                                                       :icon-name "open-menu-symbolic"
+                                                       :tooltip-text "Main menu"
+                                                       :menu-model (doto (Gio/Menu.)
+                                                                     (.append "Reload" "win.reload")
+                                                                     (.append "About" "win.about")
+                                                                     (.append "Donate" "win.donate"))]])))
 
            :reload
            (let [sidebar-view (build-ui (home-stories))]
@@ -165,6 +170,27 @@
            :push-tagged-stories
            (let [{:keys [href title]} payload]
              (push-sidebar-page state (stories-list-view href) title))
+
+           :push-search
+           (let [results-bin (doto (Adw/Bin.) (.set_vexpand true))
+                 on-search (fn [entry]
+                             (let [q (.get_text ^js entry)]
+                               (when (not-empty q)
+                                 (.set_child results-bin
+                                   (build-ui (stories-list-view
+                                               (str "/hackernews/search?q=" q)))))))]
+             (push-sidebar-page state
+               [Gtk/Box
+                :orientation Gtk/Orientation.VERTICAL
+                :.append [Gtk/SearchEntry
+                          :placeholder-text "Search Hacker News…"
+                          :hexpand true
+                          :margin-start 8
+                          :margin-end 8
+                          :margin-top 8
+                          :$activate on-search]
+                :.append results-bin]
+               "Search"))
 
            :pop-main-stack state)
 

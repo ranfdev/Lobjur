@@ -149,6 +149,16 @@
                               (assoc story :children (filterv some? children)))))
                  (assoc story :children []))))))
 
+;; Search via Algolia
+
+(defn search
+  "Search HN stories via Algolia API."
+  [query & {:keys [page] :or {page 0}}]
+  (.then
+   (http/get "https://hn.algolia.com/api/v1/search"
+             {:params {:query query :page page :hitsPerPage 30 :tags "story"}})
+   parse-json))
+
 ;; User submissions
 
 (defn user-stories

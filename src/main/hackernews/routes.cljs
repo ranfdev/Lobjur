@@ -61,6 +61,24 @@
        (remove :deleted)
        (remove :dead)))
 
+(defn- normalize-algolia-story
+  "Normalize an Algolia search hit to HAL format."
+  [hit]
+  (let [native-id (:objectID hit)
+        url (:url hit)]
+    {:id            native-id
+     :provider      "hackernews"
+     :title         (:title hit)
+     :url           url
+     :score         (:points hit)
+     :comment_count (:num_comments hit)
+     :created_at    (:created_at hit)
+     :submitter     (:author hit)
+     :tags          []
+     :_links        (hal/story-links "hackernews" native-id
+                                     :external-url (not-empty url)
+                                     :author (:author hit))}))
+
 ;; --- Handlers ---
 
 (defn- source-index-handler [_request]
@@ -188,6 +206,24 @@
                                       :has-prev (> page 1)
                                       :query-params query-params))))))))
 
+(defn- search-handler [{:keys [query]}]
+  (let [q (:q query)
+        page (js/parseInt (or (:page query) "1") 10)
+        algolia-page (dec page)
+        base-href "/hackernews/search"]
+    (if (empty? q)
+      (js/Promise.resolve (hal/collection base-href :stories []))
+      (-> (hn/search q :page algolia-page)
+          (.then (fn [result]
+                   (let [hits (:hits result)
+                         nb-pages (:nbPages result)]
+                     (-> (hal/collection base-href :stories
+                                         (mapv normalize-algolia-story hits))
+                         (hal/paginated base-href page
+                                        :has-next (< algolia-page (dec nb-pages))
+                                        :has-prev (> page 1)
+                                        :query-params {:q q})))))))))
+
 ;; --- Assembled subrouter ---
 
 (def handler
@@ -199,6 +235,7 @@
 
    (r/mount "/hackernews"
      (r/routes
+       (r/route "/search"                    search-handler)
        (r/route "/stories/{id}"              story-handler)
        (r/route "/stories/{id}/comments"     comments-handler)
        (r/route "/comments/{id}/replies"     comment-replies-handler)
