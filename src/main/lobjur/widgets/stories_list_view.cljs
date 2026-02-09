@@ -84,7 +84,7 @@
        :valign Gtk/Align.CENTER
        :tooltip-text "View comments"
        :css_classes #js ["button" "flat"]
-       :$clicked #(state/send [:select-story story])
+       :$clicked #(state/send [:select-story (assoc story :initial-view :comments)])
        :child
        [Gtk/Overlay
         :child
