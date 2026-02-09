@@ -27,6 +27,7 @@
   [url]
   (let [webview (webview-widget)
         spinner (build-ui [Adw/Spinner :spinning true])
+        error-page-ref (atom nil)
         error-page (build-ui
                     [Adw/StatusPage
                      :icon-name "dialog-error-symbolic"
@@ -38,9 +39,10 @@
                              :.add_css_class "pill"
                              :.add_css_class "suggested-action"
                              :$clicked (fn [_]
-                                        (.set_visible error-page false)
+                                        (.set_visible ^js @error-page-ref false)
                                         (.set_visible spinner true)
                                         (load-url webview url))]])
+        _ (reset! error-page-ref error-page)
         stack (Gtk/Stack.)
         overlay (build-ui
                  [Gtk/Overlay

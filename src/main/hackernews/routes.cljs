@@ -169,7 +169,7 @@
                                  (-> (js/Date. (* (:created user) 1000))
                                      (.toISOString)))
                    :karma      (:karma user)
-                   :about      (:about user)}))))))
+                   :about      (some-> (:about user) html->text)}))))))
 
 (defn- user-stories-handler [{:keys [params query]}]
   (let [username (:username params)
