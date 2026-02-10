@@ -16,10 +16,15 @@
 
 (defn pixbuf-to-texture [px]
   (Gdk/Texture.new_for_pixbuf px))
+
 (defn fetch-pixbuf [url]
   (-> (http/get-raw url)
       (.then #(Gio/MemoryInputStream.new_from_bytes %))
-      (.then #(Pixbuf/Pixbuf.new_from_stream % nil))))
+      (.then #(Pixbuf/Pixbuf.new_from_stream % nil))
+      (.catch (fn [error]
+                (println "Failed to load avatar image from" url ":" (.-message error))
+                ;; Return nil to signal failure - rollui will skip setting the property
+                nil))))
 
 (defn loaded-user-view [{:keys [username avatar_url karma about created_at invited_by is_admin is_moderator] :as user}]
   (let [grid (Gtk/Grid. #js {:row_spacing 8
@@ -71,11 +76,14 @@
       :.append
       [Adw/Avatar
        :size 72
+       :text username
        :custom-image
        (when avatar_url
          (.then
           (fetch-pixbuf avatar_url)
-          pixbuf-to-texture))]
+          (fn [pixbuf]
+            (when pixbuf  ; Only convert if pixbuf loaded successfully
+              (pixbuf-to-texture pixbuf)))))]
       :.append
       [Gtk/Box
        :orientation Gtk/Orientation.VERTICAL
