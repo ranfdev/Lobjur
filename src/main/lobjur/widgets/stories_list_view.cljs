@@ -79,7 +79,8 @@
            :label submitter
            :css_classes #js ["small" "button" "flat" "body"]]
           [Gtk/Label
-           :label (time-ago created_at)])])]
+           :label (time-ago created_at)
+           :css_classes #js ["dim-label"]])])]
       [Gtk/Button
        :valign Gtk/Align.CENTER
        :tooltip-text "View comments"

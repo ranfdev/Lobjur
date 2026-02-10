@@ -84,7 +84,7 @@
         :css_classes #js ["small" "button" "flat" "heading"]
         :$clicked #(state/send [:push-user {:href author-href :title author}])]
        :.append
-       [Gtk/Label :label (time-ago created_at) :hexpand true :halign Gtk/Align.START]
+       [Gtk/Label :label (time-ago created_at) :hexpand true :halign Gtk/Align.START :css_classes #js ["dim-label"]]
        :.append
        [Gtk/MenuButton
         :icon-name "view-more-symbolic"
