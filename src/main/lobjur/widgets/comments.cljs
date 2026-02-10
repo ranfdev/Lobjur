@@ -19,7 +19,7 @@
   (let [replies (or (get-in comment [:_embedded :replies]) [])]
     (+ (count replies) (reduce + 0 (map count-descendants replies)))))
 
-(defn- comment-content-widget [comment depth {:keys [text-ref chip-ref icon-ref toggle! chip-text]}]
+(defn- comment-content-widget [comment depth {:keys [text-ref chip-ref icon-ref toggle! chip-text has-linked-replies?]}]
   (let [{:keys [text created_at author]} comment
         author-href (hal-link comment :author)
         action-group (doto (Gio/SimpleActionGroup.)
@@ -41,29 +41,9 @@
     (add-watch box-ref ::install-actions
       (fn [_ _ _ widget]
         (when widget
-          (.insert_action_group ^js widget "comment" action-group)
-          ;; Add keyboard event controller
-          (let [key-controller (Gtk/EventControllerKey.)]
-            (.connect key-controller "key-pressed"
-              (fn [_ keyval _keycode _state]
-                (cond
-                  ;; Space or Enter: toggle collapse
-                  (or (= keyval Gdk/KEY_space)
-                      (= keyval Gdk/KEY_Return)
-                      (= keyval Gdk/KEY_KP_Enter))
-                  (do (toggle!) true) ; true = handled
-                  
-                  :else false))) ; false = not handled, propagate
-            (.add_controller ^js widget key-controller))
-          ;; Add click gesture
-          (let [gesture (Gtk/GestureClick.)]
-            (.connect gesture "released" (fn [_ _ _ _] (toggle!)))
-            (.add_controller ^js widget gesture)))))
+          (.insert_action_group ^js widget "comment" action-group))))
     [Gtk/Box
      ::rollui/ref box-ref
-     :can_focus true
-     :focusable true
-     :tooltip-text "Click to collapse comment (Space/Enter)"
      :.add_css_class "comment"
      :.add_css_class (str "comment-depth-" (mod depth 6))
      :orientation Gtk/Orientation.VERTICAL
@@ -71,12 +51,15 @@
      (list
       [Gtk/Box
        :.append
-       [Gtk/Image
+       [Gtk/Button
         ::rollui/ref icon-ref
         :icon-name "pan-down-symbolic"
-        :margin-end 4
-        :pixel-size 16
-        :css_classes #js ["dim-label"]]
+        :margin-end 2
+        :margin-start 2
+        :visible has-linked-replies?
+        :tooltip-text "Collapse/expand comment"
+        :css_classes #js ["flat" "circular"]
+        :$clicked (fn [_] (toggle!))]
        :.append
        [Gtk/Button
         :label author
@@ -84,7 +67,14 @@
         :css_classes #js ["small" "button" "flat" "heading"]
         :$clicked #(state/send [:push-user {:href author-href :title author}])]
        :.append
-       [Gtk/Label :label (time-ago created_at) :hexpand true :halign Gtk/Align.START :css_classes #js ["dim-label"]]
+       [Gtk/Label 
+        ::rollui/ref chip-ref 
+        :label chip-text
+        :hexpand true 
+        :halign Gtk/Align.FILL
+        :xalign 0.0
+        :wrap true
+        :css_classes #js ["dim-label"]]
        :.append
        [Gtk/MenuButton
         :icon-name "view-more-symbolic"
@@ -102,16 +92,7 @@
        :margin-start 8
        :margin-end 8
        :margin-bottom 8
-       :xalign 0.0]
-
-      [Gtk/Label
-       ::rollui/ref chip-ref
-       :label chip-text
-       :visible true
-       :halign Gtk/Align.START
-       :css_classes #js ["dim-label" "caption"]
-       :margin-start 8
-       :margin-bottom 4])]))
+       :xalign 0.0])]))
 
 (defn comment-tree-widget
   ([comment] (comment-tree-widget comment 0))
@@ -125,49 +106,40 @@
          desc-count (count-descendants comment)
          has-linked-replies? (some? (get-in comment [:_links :replies :href]))
          
-         ;; Chip text function that changes based on state
-         chip-text-fn (fn [is-collapsed]
-                        (cond
-                          is-collapsed (str "▸ " desc-count " collapsed")
-                          (pos? desc-count) (str "▾ " desc-count " " (if (= 1 desc-count) "reply" "replies"))
-                          has-linked-replies? "▾ replies"
-                          :else ""))
+         ;; Chip text function - always shows timestamp and reply count
+         chip-text-fn (fn []
+                        (let [time-str (time-ago (:created_at comment))
+                              reply-info (cond
+                                           (pos? desc-count) (str desc-count " " (if (= 1 desc-count) "reply" "replies"))
+                                           has-linked-replies? "replies"
+                                           :else nil)]
+                          (if reply-info
+                            (str time-str " · " reply-info)
+                            time-str)))
          
          toggle! (fn []
                    (swap! collapsed not)
                    (let [c @collapsed]
-                     ;; Task 1: Don't toggle text - keep it visible!
-                     ;; Only toggle replies visibility
+                     ;; Toggle replies visibility
                      (when-let [r @replies-ref] (.set_visible ^js r (not c)))
                      
-                     ;; Task 3: Update chip text and keep it visible
-                     (when-let [ch @chip-ref]
-                       (let [new-text (chip-text-fn c)]
-                         (when (not-empty new-text)
-                           (.set_visible ^js ch true)
-                           (.set_label ^js ch new-text))))
-                     
-                     ;; Task 3: Update expander icon
-                     (when-let [icon @icon-ref]
-                       (.set_from_icon_name ^js icon
-                         (if c "pan-end-symbolic" "pan-down-symbolic")))
-                     
-                     ;; Task 3: Update tooltip with current action
-                     (when-let [box @box-ref]
-                       (.set_tooltip_text ^js box
-                         (if c
-                           "Click to expand comment (Space/Enter)"
-                           "Click to collapse comment (Space/Enter)")))))]
+                     ;; Update collapse button icon and tooltip
+                     (when-let [btn @icon-ref]
+                       (.set_icon_name ^js btn
+                         (if c "pan-end-symbolic" "pan-down-symbolic"))
+                       (.set_tooltip_text ^js btn
+                         (if c "Expand comment" "Collapse comment")))))]
      [Gtk/Box
       ::rollui/ref box-ref
       :orientation Gtk/Orientation.VERTICAL
       :spacing 4
       :.append
-      (comment-content-widget comment depth {:text-ref text-ref 
-                                              :chip-ref chip-ref 
-                                              :icon-ref icon-ref
-                                              :toggle! toggle! 
-                                              :chip-text (chip-text-fn false)})
+      (comment-content-widget comment depth {:text-ref text-ref
+                                             :chip-ref chip-ref
+                                             :icon-ref icon-ref
+                                             :toggle! toggle!
+                                             :chip-text (chip-text-fn)
+                                             :has-linked-replies? has-linked-replies?})
       :.append
       (if-let [embedded-replies (get-in comment [:_embedded :replies])]
         ;; Lobsters: embedded, render directly
