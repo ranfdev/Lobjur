@@ -26,32 +26,40 @@
                              :column_spacing 8
                              :halign Gtk/Align.START})
         stories-href (hal-link user :stories)
+        invited-by-href (hal-link user :invited_by)
         about-text (when (seq about) (html->text about))
         fields (cond-> []
                  (seq about-text)
-                 (conj ["About" about-text])
+                 (conj ["About" about-text nil])
                  (seq created_at)
-                 (conj ["Joined" created_at])
+                 (conj ["Joined" created_at nil])
                  (seq invited_by)
-                 (conj ["Invited by" invited_by])
+                 (conj ["Invited by" invited_by invited-by-href])
                  is_admin
-                 (conj ["Role" "Admin"])
+                 (conj ["Role" "Admin" nil])
                  (and is_moderator (not is_admin))
-                 (conj ["Role" "Moderator"]))]
-    (doseq [[i [k v]] (zipmap (range) fields)
+                 (conj ["Role" "Moderator" nil]))]
+    (doseq [[i [k v href]] (zipmap (range) fields)
             :let [key-label
                   (Gtk/Label. #js {:label k
                                    :yalign 0.0
                                    :xalign 0.0})
                   _ (.add_css_class key-label "heading")
-                  value-label
-                  (Gtk/Label. #js {:label (str v)
-                                   :xalign 0.0
-                                   :selectable true
-                                   :wrap-mode Pango/WrapMode.WORD_CHAR
-                                   :wrap true})]]
+                  value-widget
+                  (if href
+                    (Gtk/Button. #js {:label (str v)
+                                      :halign Gtk/Align.START
+                                      :css_classes #js ["flat" "link"]})
+                    (Gtk/Label. #js {:label (str v)
+                                     :xalign 0.0
+                                     :selectable true
+                                     :wrap-mode Pango/WrapMode.WORD_CHAR
+                                     :wrap true}))
+                  _ (when href
+                      (.connect value-widget "clicked"
+                                #(state/send [:push-user {:href href :title v}])))]]
       (.attach grid key-label 0 i 1 1)
-      (.attach grid value-label 1 i 1 1))
+      (.attach grid value-widget 1 i 1 1))
     [Gtk/Box
      :orientation Gtk/Orientation.VERTICAL
      :spacing 8
