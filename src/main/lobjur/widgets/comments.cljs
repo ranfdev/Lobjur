@@ -47,14 +47,14 @@
      (list
        [Gtk/Box
         :.append
-        [Gtk/Button
-         :icon-name icon-name
-         :margin-end 2
-         :margin-start 2
-         :visible has-linked-replies?
-         :tooltip-text tooltip-text
-         :css_classes #js ["flat" "circular"]
-         :$clicked (fn [_] (toggle!))]
+         [Gtk/Button
+          :icon-name icon-name
+          :margin-end 2
+          :margin-start 2
+          :visible has-linked-replies?
+          :tooltip-text tooltip-text
+          :css_classes #js ["flat" "circular" "comment-collapse-btn"]
+          :$clicked (fn [_] (toggle!))]
         :.append
         [Gtk/Button
         :label author
