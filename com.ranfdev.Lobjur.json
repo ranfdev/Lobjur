@@ -1,4 +1,5 @@
 {
+    "$schema": "https://raw.githubusercontent.com/flatpak/flatpak-builder/main/data/flatpak-manifest.schema.json",
     "app-id" : "com.ranfdev.Lobjur",
     "runtime" : "org.gnome.Platform",
     "runtime-version" : "49",

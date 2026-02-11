@@ -83,6 +83,10 @@ All API responses follow HAL structure:
 
 ## Key Conventions
 
+### Keep low nesting depth
+- Avoid nesting code too much, because that results in a long list of parentheses that is difficult to read and understand. 
+- If you find yourself nesting more than 3-4 levels, consider refactoring into smaller functions or using threading macros (`->`, `->>`) to flatten the structure. 
+
 ### ClojureScript for GJS
 
 1. **Namespace structure**: Mirror directory structure (`api.router` → `src/main/api/router.cljs`)
@@ -173,3 +177,6 @@ All API responses follow HAL structure:
 - **Target file**: `build/app.js` (main entry point)
 - **Libraries**: `build/jslibs/` (ClojureScript deps)
 - **Data files**: `data/` (UI definitions, icons - copied to build/)
+
+### Documentation and skills
+- **Documentation**: Take advantage of the docs through the gnome-sdk-docs skill. You better lookup the docs instead of doing trial and error. 
