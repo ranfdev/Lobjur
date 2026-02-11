@@ -42,8 +42,8 @@
 (defn window-content []
   [Adw/NavigationSplitView
    ::rollui/ref-in [global-widgets :split-view]
-   :min-sidebar-width 300.0
-   :max-sidebar-width 420.0
+   :min-sidebar-width 360.0
+   :max-sidebar-width 460.0
    :sidebar-width-fraction 0.35
    :sidebar
    [Adw/NavigationPage

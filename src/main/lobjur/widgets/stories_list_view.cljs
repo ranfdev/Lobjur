@@ -20,10 +20,7 @@
         tag-story-links (get-in story [:_links :tag-stories])]
     [Gtk/Box
      :orientation Gtk/Orientation.HORIZONTAL
-     :margin-top 4
-     :margin-bottom 4
-     :margin-start 8
-     :margin-end 4
+     :margin-start 2
      :.append
      (list
       (upvote-btn score)
@@ -138,54 +135,52 @@
      :propagate_natural_height true
      :hscrollbar_policy Gtk/PolicyType.NEVER
      :child
-     [Adw/Clamp
-      :child
-      [Gtk/Box
-       :orientation Gtk/Orientation.VERTICAL
-       :margin-top 8
-       :margin-bottom 24
-       :margin-start 8
-       :margin-end 8
-       :spacing 8
-       :.append
-       [Adw/Bin
-        :child
-        (rv/resource-widget
-         res :stories
-         {:on-ready
-          (fn [response]
-            [Adw/Bin
-             :height-request 48
-             :child
-             (-> (fetch-collection response :stories)
-                 (.then
-                  (fn [stories]
-                    (if (> (count stories) 0)
-                      [Gtk/ListBox
-                       :activate-on-single-click true
-                       :.add_css_class "navigation-sidebar"
-                       :$row-activated (fn [_ row]
-                                         (when-let [s (aget row "story")]
-                                           (let [u (or (get s :url) (aget s "url"))]
-                                             (state/send [:select-story (assoc s :initial-view (if (not-empty u) :article :comments))]))))
-                       :.append
-                       (map lazy-story-widget stories)]
-                      [Adw/StatusPage
-                       :icon_name "mail-read-symbolic"
-                       :title
-                       "No Stories Available"]))))])})]
-       :.append
-       (pagination-controls
-        {:prev-sensitive (derived-atom [res] :prev-story-page
-                          #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
-         :next-sensitive (derived-atom [res] :next-story-page
-                          #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
-         :on-prev (fn []
-                    (when-let [data (r/rdata @res)]
-                      (r/resource-fetch! res (fn [] (prev-page data)))))
-         :on-next (fn []
-                    (when-let [data (r/rdata @res)]
-                      (r/resource-fetch! res (fn [] (next-page data)))))})]]]))
+     [Gtk/Box
+      :orientation Gtk/Orientation.VERTICAL
+      :margin-top 8
+      :margin-bottom 24
+      :margin-start 8
+      :margin-end 8
+      :spacing 8
+      :.append
+      [Adw/Bin
+       :child
+       (rv/resource-widget
+        res :stories
+        {:on-ready
+         (fn [response]
+           [Adw/Bin
+            :height-request 48
+            :child
+            (-> (fetch-collection response :stories)
+                (.then
+                 (fn [stories]
+                   (if (> (count stories) 0)
+                     [Gtk/ListBox
+                      :activate-on-single-click true
+                      :.add_css_class "navigation-sidebar"
+                      :$row-activated (fn [_ row]
+                                        (when-let [s (aget row "story")]
+                                          (let [u (or (get s :url) (aget s "url"))]
+                                            (state/send [:select-story (assoc s :initial-view (if (not-empty u) :article :comments))]))))
+                      :.append
+                      (map lazy-story-widget stories)]
+                     [Adw/StatusPage
+                      :icon_name "mail-read-symbolic"
+                      :title
+                      "No Stories Available"]))))])})]
+      :.append
+      (pagination-controls
+       {:prev-sensitive (derived-atom [res] :prev-story-page
+                                      #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
+        :next-sensitive (derived-atom [res] :next-story-page
+                                      #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
+        :on-prev (fn []
+                   (when-let [data (r/rdata @res)]
+                     (r/resource-fetch! res (fn [] (prev-page data)))))
+        :on-next (fn []
+                   (when-let [data (r/rdata @res)]
+                     (r/resource-fetch! res (fn [] (next-page data)))))})]]))
 (defn build-view-stack [source]
   (let [stack (Adw/ViewStack.)
         src-id (:id source)]

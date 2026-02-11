@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
-    [lobjur.widgets.webview :as webview]
+   [lobjur.widgets.webview :as webview]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
@@ -220,6 +220,10 @@
    .comment {
      border-left: 2px solid alpha(@theme_fg_color, 0.4);
      border-radius: 4px;
+   }
+  .story-row {
+     padding: 4px 6px;
+     border-radius: 6px;
    }
   .comment-depth-0 { border-left-color: @blue_3; }
   .comment-depth-1 { border-left-color: @green_3; }
