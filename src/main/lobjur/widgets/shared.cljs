@@ -65,3 +65,12 @@
   }
 }
 "))
+
+(defn time-ago-label
+  [input & {:keys [suffix] :as props}]
+  (let [date (if (instance? js/Date input) input (js/Date. input))
+        label (str (time-ago date) (or suffix ""))]
+    (into [Gtk/Label
+           :label label
+           :tooltip-text (.toLocaleString date)]
+          (mapcat identity (dissoc props :suffix)))))

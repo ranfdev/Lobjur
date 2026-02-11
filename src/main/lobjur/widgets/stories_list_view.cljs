@@ -5,7 +5,7 @@
    ["gjs.gi.Gtk" :as Gtk]
    [clojure.string :as str]
    [lobjur.state :as state :refer [global-widgets]]
-   [lobjur.widgets.shared :refer [pagination-controls time-ago upvote-btn]]
+   [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
    [api.sources :as sources]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
@@ -78,9 +78,7 @@
            :$clicked #(state/send [:push-user {:href (hal-link story :author) :title submitter}])
            :label submitter
            :css_classes #js ["small" "button" "flat" "body"]]
-          [Gtk/Label
-           :label (time-ago created_at)
-           :css_classes #js ["dim-label"]])])]
+           (time-ago-label created_at :css_classes #js ["dim-label"]))])]
       [Gtk/Button
        :valign Gtk/Align.CENTER
        :tooltip-text "View comments"

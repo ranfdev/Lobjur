@@ -7,7 +7,7 @@
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
    [lobjur.state :as state]
-   [lobjur.widgets.shared :refer [pagination-controls time-ago upvote-btn]]
+   [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url fetch-collection hal-link has-relation? next-page prev-page]]
    [lobjur.utils.common :refer [html->text]]
@@ -19,7 +19,7 @@
   (let [replies (or (get-in comment [:_embedded :replies]) [])]
     (+ (count replies) (reduce + 0 (map count-descendants replies)))))
 
-(defn- comment-content-widget [comment depth {:keys [icon-name tooltip-text toggle! chip-text has-linked-replies?]}]
+(defn- comment-content-widget [comment depth {:keys [icon-name tooltip-text toggle! chip-widget has-linked-replies?]}]
   (let [{:keys [text author]} comment
         author-href (hal-link comment :author)
         action-group (doto (Gio/SimpleActionGroup.)
@@ -61,16 +61,10 @@
         :halign Gtk/Align.START
         :css_classes #js ["small" "button" "flat" "heading"]
         :$clicked #(state/send [:push-user {:href author-href :title author}])]
-        :.append
-        [Gtk/Label 
-         :label chip-text
-         :hexpand true 
-         :halign Gtk/Align.FILL
-        :xalign 0.0
-        :wrap true
-        :css_classes #js ["dim-label"]]
-       :.append
-       [Gtk/MenuButton
+         :.append
+         chip-widget
+         :.append
+         [Gtk/MenuButton
         :icon-name "view-more-symbolic"
         :tooltip-text "Comment options"
         :css_classes #js ["flat" "small" "comment-revealer-btn"]
@@ -122,14 +116,17 @@
    (let [collapsed (atom false)
          desc-count (count-descendants comment)
          has-linked-replies? (some? (get-in comment [:_links :replies :href]))
-         chip-text (let [time-str (time-ago (:created_at comment))
-                         reply-info (cond
-                                      (pos? desc-count) (str desc-count " " (if (= 1 desc-count) "reply" "replies"))
-                                      has-linked-replies? "replies"
-                                      :else nil)]
-                     (if reply-info
-                       (str time-str " · " reply-info)
-                       time-str))
+         reply-info (cond
+                      (pos? desc-count) (str desc-count " " (if (= 1 desc-count) "reply" "replies"))
+                      has-linked-replies? "replies"
+                      :else nil)
+         chip-widget (time-ago-label (:created_at comment)
+                                     :suffix (when reply-info (str " · " reply-info))
+                                     :hexpand true
+                                     :halign Gtk/Align.FILL
+                                     :xalign 0.0
+                                     :wrap true
+                                     :css_classes #js ["dim-label"])
          icon-name (derived-atom [collapsed] :comment-collapse-icon
                      (fn [is-collapsed]
                        (if is-collapsed "pan-end-symbolic" "pan-down-symbolic")))
@@ -143,10 +140,10 @@
       :spacing 4
       :.append
       (comment-content-widget comment depth {:icon-name icon-name
-                                             :tooltip-text tooltip-text
-                                             :toggle! toggle!
-                                             :chip-text chip-text
-                                             :has-linked-replies? has-linked-replies?})
+                                              :tooltip-text tooltip-text
+                                              :toggle! toggle!
+                                              :chip-widget chip-widget
+                                              :has-linked-replies? has-linked-replies?})
       :.append
       (comment-replies-widget comment depth replies-visible)])))
 (defn comments-view [{:keys [title url score tags] :as story}]
