@@ -121,6 +121,42 @@
   (fn [request]
     (server (merge defaults request))))
 
+(defn- cache-key
+  [request]
+  (select-keys request [:method :path :query :body]))
+
+(defn- cache-bypass?
+  [request]
+  (false? (:cache? request)))
+
+(defn- cacheable-request?
+  [request]
+  (and (= :GET (:method request))
+       (url/in-process? (:path request))
+       (not (cache-bypass? request))))
+
+(defn- store-cache!
+  [cache-atom key result]
+  (let [promise (-> result
+                    (.catch (fn [err]
+                              (swap! cache-atom dissoc key)
+                              (js/Promise.reject err))))]
+    (swap! cache-atom assoc key promise)
+    promise))
+
+(defn with-cache
+  "Cache in-process GET responses. Set :cache? false in request to bypass."
+  ([server]
+   (with-cache server (atom {})))
+  ([server cache-atom]
+   (fn [request]
+     (if-not (cacheable-request? request)
+       (server request)
+       (let [key (cache-key request)]
+         (or (get @cache-atom key)
+             (when-let [result (server request)]
+               (store-cache! cache-atom key result))))))))
+
 (defn with-error-handler
   "Catch errors and wrap them as HAL error resources instead of rejecting."
   [server]

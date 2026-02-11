@@ -10,6 +10,11 @@
    (r/route "/items" (fn [_] (js/Promise.resolve {:message "items"})))
    (r/route "/items/{id}" (fn [req] (js/Promise.resolve {:id (get-in req [:params :id])})))))
 
+(defn- delayed-response
+  [value delay-ms]
+  (js/Promise. (fn [resolve _reject]
+                 (js/setTimeout #(resolve value) delay-ms))))
+
 ;; Test basic request dispatch
 (deftest test-request-get
   (testing "GET request dispatches to handler"
@@ -83,6 +88,28 @@
                      (is (= "root" (:message res)))
                      (is (contains? res :_timing))
                      (is (number? (get-in res [:_timing :duration-ms])))
+                     (done)))
+            (.catch (fn [err]
+                      (is false (str "Unexpected error: " (.-message err)))
+                      (done))))))))
+
+;; Test with-cache combinator
+(deftest test-with-cache
+  (testing "with-cache caches in-process GET requests and allows bypass"
+    (let [calls (atom 0)
+          app (fn [_]
+                (swap! calls inc)
+                (delayed-response {:message "cached"} 10))
+          srv (s/with-cache app)]
+      (async done
+        (-> (js/Promise.all #js[(s/GET srv "/items")
+                                (s/GET srv "/items")])
+            (.then (fn [responses]
+                     (is (= 1 @calls))
+                     (is (= "cached" (:message (aget responses 0))))
+                     (s/request srv {:method :GET :path "/items" :cache? false})))
+            (.then (fn [_]
+                     (is (= 2 @calls))
                      (done)))
             (.catch (fn [err]
                       (is false (str "Unexpected error: " (.-message err)))

@@ -62,14 +62,15 @@
 
 (def server
   "The main server: routes external URLs to HTTP, in-process URLs to the app handler.
-   Wrapped with history recording for REPL debugging."
+   Wrapped with history recording and an in-memory cache for REPL debugging."
   (-> (fn [request]
         (let [path (:path request)]
           (if (or (str/starts-with? path "https://")
                   (str/starts-with? path "http://"))
             (get-external path)
             (r/dispatch app request))))
-      (s/with-history debug/*history*)))
+      (s/with-history debug/*history*)
+      (s/with-cache)))
 
 ;; --- Public API ---
 
