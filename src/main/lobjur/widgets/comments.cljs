@@ -113,28 +113,33 @@
 (defn comment-tree-widget
   ([comment] (comment-tree-widget comment 0))
   ([comment depth]
-   (let [collapsed (atom false)
-         desc-count (count-descendants comment)
-         has-linked-replies? (some? (get-in comment [:_links :replies :href]))
-         reply-info (cond
-                      (pos? desc-count) (str desc-count " " (if (= 1 desc-count) "reply" "replies"))
-                      has-linked-replies? "replies"
-                      :else nil)
-         chip-widget (time-ago-label (:created_at comment)
-                                     :suffix (when reply-info (str " · " reply-info))
-                                     :hexpand true
-                                     :halign Gtk/Align.FILL
-                                     :xalign 0.0
-                                     :wrap true
-                                     :css_classes #js ["dim-label"])
-         icon-name (derived-atom [collapsed] :comment-collapse-icon
-                     (fn [is-collapsed]
-                       (if is-collapsed "pan-end-symbolic" "pan-down-symbolic")))
-         tooltip-text (derived-atom [collapsed] :comment-collapse-tooltip
-                        (fn [is-collapsed]
-                          (if is-collapsed "Expand comment" "Collapse comment")))
-         replies-visible (derived-atom [collapsed] :comment-replies-visible not)
-         toggle! #(swap! collapsed not)]
+    (let [collapsed (atom false)
+          desc-count (count-descendants comment)
+          has-linked-replies? (some? (get-in comment [:_links :replies :href]))
+          reply-info (cond
+                       (pos? desc-count) (str desc-count " " (if (= 1 desc-count) "reply" "replies"))
+                       has-linked-replies? "replies"
+                       :else nil)
+          chip-widget (time-ago-label (:created_at comment)
+                                      :suffix (when reply-info (str " · " reply-info))
+                                      :hexpand true
+                                      :halign Gtk/Align.FILL
+                                      :xalign 0.0
+                                      :wrap true
+                                      :css_classes #js ["dim-label"])
+          comment-id (:id comment)
+          icon-name (derived-atom [collapsed]
+                      (keyword (str "comment-collapse-icon-" comment-id))
+                      (fn [is-collapsed]
+                        (if is-collapsed "pan-end-symbolic" "pan-down-symbolic")))
+          tooltip-text (derived-atom [collapsed]
+                         (keyword (str "comment-collapse-tooltip-" comment-id))
+                         (fn [is-collapsed]
+                           (if is-collapsed "Expand comment" "Collapse comment")))
+          replies-visible (derived-atom [collapsed]
+                           (keyword (str "comment-replies-visible-" comment-id))
+                           not)
+          toggle! #(swap! collapsed not)]
      [Gtk/Box
       :orientation Gtk/Orientation.VERTICAL
       :spacing 4
