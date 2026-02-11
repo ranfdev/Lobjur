@@ -5,7 +5,7 @@
    ["gjs.gi.Gtk" :as Gtk]
    [clojure.string :as str]
    [lobjur.state :as state :refer [global-widgets]]
-   [lobjur.widgets.shared :refer [upvote-btn time-ago]]
+   [lobjur.widgets.shared :refer [pagination-controls time-ago upvote-btn]]
    [api.router :as api]
    [api.sources :as sources]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
@@ -177,27 +177,17 @@
                        :title
                        "No Stories Available"]))))])})]
        :.append
-       [Gtk/Box
-        :hexpand true
-        :homogeneous true
-        :.append
-        [Gtk/Button
-         :halign Gtk/Align.START
-         :label "Previous"
-         :sensitive (derived-atom [res] :prev-story-page
-                     #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
-         :$clicked (fn [_] (when-let [data (r/rdata @res)]
-                          (r/resource-fetch! res (fn [] (prev-page data)))))]
-        :.append
-        [Gtk/Label :label "•"]
-        :.append
-        [Gtk/Button
-         :halign Gtk/Align.END
-         :label "Next"
-         :sensitive (derived-atom [res] :next-story-page
-                     #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
-         :$clicked (fn [_] (when-let [data (r/rdata @res)]
-                          (r/resource-fetch! res (fn [] (next-page data)))))]]]]]))
+       (pagination-controls
+        {:prev-sensitive (derived-atom [res] :prev-story-page
+                          #(and (r/ready? %) (has-relation? (r/rdata %) :prev)))
+         :next-sensitive (derived-atom [res] :next-story-page
+                          #(and (r/ready? %) (has-relation? (r/rdata %) :next)))
+         :on-prev (fn []
+                    (when-let [data (r/rdata @res)]
+                      (r/resource-fetch! res (fn [] (prev-page data)))))
+         :on-next (fn []
+                    (when-let [data (r/rdata @res)]
+                      (r/resource-fetch! res (fn [] (next-page data)))))}))]]]))
 (defn build-view-stack [source]
   (let [stack (Adw/ViewStack.)
         src-id (:id source)]

@@ -13,6 +13,30 @@
    :.append [Gtk/Image :icon_name "pan-up-symbolic"]
    :.append [Gtk/Label :label (str score) :css_classes #js ["heading" "numeric"]]])
 
+(defn pagination-controls
+  [{:keys [prev-sensitive next-sensitive on-prev on-next]}]
+  [Gtk/Box
+   :hexpand true
+   :homogeneous true
+   :.append
+   [Gtk/Button
+    :halign Gtk/Align.START
+    :icon-name "pan-start-symbolic"
+    :tooltip-text "Previous"
+    :css_classes #js ["flat" "circular"]
+    :sensitive prev-sensitive
+    :$clicked (fn [_] (when on-prev (on-prev)))]
+   :.append
+   [Gtk/Label :label "•"]
+   :.append
+   [Gtk/Button
+    :halign Gtk/Align.END
+    :icon-name "pan-end-symbolic"
+    :tooltip-text "Next"
+    :css_classes #js ["flat" "circular"]
+    :sensitive next-sensitive
+    :$clicked (fn [_] (when on-next (on-next)))]])
+
 ;;taken from https://stackoverflow.com/a/69122877/11189772
 (def time-ago (js* "function(input) {
   const date = (input instanceof Date) ? input : new Date(input);
