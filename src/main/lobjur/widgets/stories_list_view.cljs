@@ -185,7 +185,7 @@
                       (r/resource-fetch! res (fn [] (prev-page data)))))
          :on-next (fn []
                     (when-let [data (r/rdata @res)]
-                      (r/resource-fetch! res (fn [] (next-page data)))))}))]]]))
+                      (r/resource-fetch! res (fn [] (next-page data)))))})]]]))
 (defn build-view-stack [source]
   (let [stack (Adw/ViewStack.)
         src-id (:id source)]

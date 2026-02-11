@@ -256,8 +256,8 @@
                               (when-let [data (r/rdata @res)]
                                 (r/resource-fetch! res (fn [] (prev-page data)))))
                    :on-next (fn []
-                              (when-let [data (r/rdata @res)]
-                                (r/resource-fetch! res (fn [] (next-page data)))))}))
+                               (when-let [data (r/rdata @res)]
+                                 (r/resource-fetch! res (fn [] (next-page data)))))})]
                 [Adw/StatusPage
                  :title "No comments available"
                  :icon-name "user-invisible-symbolic"
