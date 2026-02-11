@@ -22,15 +22,36 @@
       (.then #(Gio/MemoryInputStream.new_from_bytes %))
       (.then #(Pixbuf/Pixbuf.new_from_stream % nil))
       (.catch (fn [error]
-                (println "Failed to load avatar image from" url ":" (.-message error))
-                ;; Return nil to signal failure - rollui will skip setting the property
-                nil))))
+                 (println "Failed to load avatar image from" url ":" (.-message error))
+                 ;; Return nil to signal failure - rollui will skip setting the property
+                 nil))))
+
+(defn- user-field-row [label value href]
+  [Gtk/Box
+   :orientation Gtk/Orientation.HORIZONTAL
+   :spacing 8
+   :.append
+   (list
+    [Gtk/Label
+     :label label
+     :yalign 0.0
+     :xalign 0.0
+     :css_classes #js ["heading"]]
+    (if href
+      [Gtk/Button
+       :label (str value)
+       :halign Gtk/Align.START
+       :css_classes #js ["flat" "link"]
+       :$clicked #(state/send [:push-user {:href href :title value}])]
+      [Gtk/Label
+       :label (str value)
+       :xalign 0.0
+       :selectable true
+       :wrap-mode Pango/WrapMode.WORD_CHAR
+       :wrap true]))])
 
 (defn loaded-user-view [{:keys [username avatar_url karma about created_at invited_by is_admin is_moderator] :as user}]
-  (let [grid (Gtk/Grid. #js {:row_spacing 8
-                             :column_spacing 8
-                             :halign Gtk/Align.START})
-        stories-href (hal-link user :stories)
+  (let [stories-href (hal-link user :stories)
         invited-by-href (hal-link user :invited_by)
         about-text (when (seq about) (html->text about))
         fields (cond-> []
@@ -43,28 +64,8 @@
                  is_admin
                  (conj ["Role" "Admin" nil])
                  (and is_moderator (not is_admin))
-                 (conj ["Role" "Moderator" nil]))]
-    (doseq [[i [k v href]] (zipmap (range) fields)
-            :let [key-label
-                  (Gtk/Label. #js {:label k
-                                   :yalign 0.0
-                                   :xalign 0.0})
-                  _ (.add_css_class key-label "heading")
-                  value-widget
-                  (if href
-                    (Gtk/Button. #js {:label (str v)
-                                      :halign Gtk/Align.START
-                                      :css_classes #js ["flat" "link"]})
-                    (Gtk/Label. #js {:label (str v)
-                                     :xalign 0.0
-                                     :selectable true
-                                     :wrap-mode Pango/WrapMode.WORD_CHAR
-                                     :wrap true}))
-                  _ (when href
-                      (.connect value-widget "clicked"
-                                #(state/send [:push-user {:href href :title v}])))]]
-      (.attach grid key-label 0 i 1 1)
-      (.attach grid value-widget 1 i 1 1))
+                 (conj ["Role" "Moderator" nil]))
+        field-rows (map (fn [[label value href]] (user-field-row label value href)) fields)]
     [Gtk/Box
      :orientation Gtk/Orientation.VERTICAL
      :spacing 8
@@ -93,11 +94,15 @@
         :label username
         :xalign 0
         :.add_css_class "title-1"]
-       :.append
-       [Gtk/Label
-        :xalign 0
-        :label (str "Karma: " karma)]]]
-     :.append grid
+        :.append
+        [Gtk/Label
+         :xalign 0
+         :label (str "Karma: " karma)]]]
+     :.append
+     [Gtk/Box
+      :orientation Gtk/Orientation.VERTICAL
+      :spacing 8
+      :.append field-rows]
      :.append
      [Gtk/Button
       :label "Newest Stories"
@@ -119,4 +124,3 @@
       (rv/resource-widget
        res :user
        {:on-ready loaded-user-view})]]))
-
