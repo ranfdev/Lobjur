@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [lobjur.state :as state]
    [lobjur.widgets.comments :as comments]
+   [lobjur.widgets.network-debugger :as network-debugger]
    [lobjur.widgets.webview :as webview]
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
@@ -130,10 +131,11 @@
                  (assoc :sidebar-header-end [Gtk/MenuButton
                                              :icon-name "open-menu-symbolic"
                                              :tooltip-text "Main menu"
-                                             :menu-model (doto (Gio/Menu.)
-                                                           (.append "Reload" "win.reload")
-                                                           (.append "About" "win.about")
-                                                           (.append "Donate" "win.donate"))])))
+                                              :menu-model (doto (Gio/Menu.)
+                                                            (.append "Reload" "win.reload")
+                                                            (.append "Network Debugger" "win.network-debugger")
+                                                            (.append "About" "win.about")
+                                                            (.append "Donate" "win.donate"))])))
 
             :reload
             (let [sidebar-view (build-ui (home-stories))]
@@ -321,11 +323,13 @@
                      (.connect "activate" #(about))))
       (.add_action (doto (Gio/SimpleAction. #js {:name "donate"})
                      (.connect "activate" #(Gtk/show_uri nil "https://github.com/sponsors/ranfdev" 0))))
-      (.add_action (doto (Gio/SimpleAction. #js {:name "reload"})
-                     (.connect "activate" (fn [_ _] (state/send [:reload])))))
-      (.add_action (doto (Gio/SimpleAction. #js {:name "copy-article-link"})
-                     (.connect "activate" (fn [_ _]
-                                            (when-let [url (external-url (:selected-story @state/state))]
+       (.add_action (doto (Gio/SimpleAction. #js {:name "reload"})
+                      (.connect "activate" (fn [_ _] (state/send [:reload])))))
+       (.add_action (doto (Gio/SimpleAction. #js {:name "network-debugger"})
+                      (.connect "activate" (fn [_ _] (network-debugger/open! app win)))))
+       (.add_action (doto (Gio/SimpleAction. #js {:name "copy-article-link"})
+                      (.connect "activate" (fn [_ _]
+                                             (when-let [url (external-url (:selected-story @state/state))]
                                               (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
                                                 (.set ^js clipboard url)))))))
       (.add_action (doto (Gio/SimpleAction. #js {:name "copy-comments-link"})
