@@ -13,7 +13,7 @@
 
 (defn link
   "Create a HAL link with proper scheme.
-   Internal links get 'in-process://api' prefix.
+   Internal links get 'in-process://' prefix.
    External links remain unchanged."
   ([href] (link href {}))
   ([href opts]

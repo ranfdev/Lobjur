@@ -190,7 +190,7 @@
         (.catch (fn [err]
                   {:_error true
                    :message (.-message err)
-                   :_links {:self {:href (str "in-process://api" (:path request))}}})))))
+                   :_links {:self {:href (url/make-url :in-process (or (:path request) "/"))}}})))))
 
 ;; ---------------------------------------------------------------------------
 ;; Composition helper

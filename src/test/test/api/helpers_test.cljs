@@ -15,12 +15,12 @@
   {:id 123
    :title "Test Story"
    :score 42
-   :_links {:self {:href "in-process://api/stories/123"}
+   :_links {:self {:href "in-process:///stories/123"}
             :external {:href "https://example.com/article"}
-            :comments {:href "in-process://api/stories/123/comments"}}
+            :comments {:href "in-process:///stories/123/comments"}}
    :_embedded {:author {:username "jcs"
                         :karma 2937
-                        :_links {:self {:href "in-process://api/users/jcs"}}}
+                        :_links {:self {:href "in-process:///users/jcs"}}}
                :comments [{:id 1 :text "Great article!"}
                          {:id 2 :text "Thanks for sharing"}]}})
 
@@ -29,23 +29,23 @@
   {:id 456
    :title "Another Story"
    :score 15
-   :_links {:self {:href "in-process://api/stories/456"}
+   :_links {:self {:href "in-process:///stories/456"}
             :external {:href "https://example.com/post"}
-            :author {:href "in-process://api/users/bob"}
-            :comments {:href "in-process://api/stories/456/comments"}}})
+            :author {:href "in-process:///users/bob"}
+            :comments {:href "in-process:///stories/456/comments"}}})
 
 (def sample-feed-response
   "Paginated feed response with embedded stories"
-  {:_links {:self {:href "in-process://api/feeds/lobsters/hot"}
-            :next {:href "in-process://api/feeds/lobsters/hot?page=2"}}
+  {:_links {:self {:href "in-process:///feeds/lobsters/hot"}
+            :next {:href "in-process:///feeds/lobsters/hot?page=2"}}
    :_embedded {:stories [{:id 1 :title "Story 1" :score 10}
                         {:id 2 :title "Story 2" :score 20}
                         {:id 3 :title "Story 3" :score 30}]}})
 
 (def sample-feed-last-page
   "Last page of feed with no next link"
-  {:_links {:self {:href "in-process://api/feeds/lobsters/hot?page=5"}
-            :prev {:href "in-process://api/feeds/lobsters/hot?page=4"}}
+  {:_links {:self {:href "in-process:///feeds/lobsters/hot?page=5"}
+            :prev {:href "in-process:///feeds/lobsters/hot?page=4"}}
    :_embedded {:stories [{:id 99 :title "Last Story" :score 5}]}})
 
 (def sample-author-response
@@ -53,11 +53,11 @@
   {:username "bob"
    :karma 500
    :about "Software developer"
-   :_links {:self {:href "in-process://api/users/bob"}}})
+   :_links {:self {:href "in-process:///users/bob"}}})
 
 (def sample-comments-response
   "Comments collection that would be fetched"
-  {:_links {:self {:href "in-process://api/stories/456/comments"}}
+  {:_links {:self {:href "in-process:///stories/456/comments"}}
    :_embedded {:comments [{:id 10 :text "Comment 1"}
                          {:id 11 :text "Comment 2"}
                          {:id 12 :text "Comment 3"}]}})
@@ -68,14 +68,14 @@
 
 (def mock-responses
   "Map of URLs to mock responses"
-  (atom {"in-process://api/users/bob" sample-author-response
-         "in-process://api/stories/456/comments" sample-comments-response
-         "in-process://api/stories/123/comments" sample-comments-response
-         "in-process://api/feeds/lobsters/hot" sample-feed-response
-         "in-process://api/feeds/lobsters/hot?page=2" 
-         {:_links {:self {:href "in-process://api/feeds/lobsters/hot?page=2"}
-                   :prev {:href "in-process://api/feeds/lobsters/hot"}
-                   :next {:href "in-process://api/feeds/lobsters/hot?page=3"}}
+  (atom {"in-process:///users/bob" sample-author-response
+         "in-process:///stories/456/comments" sample-comments-response
+         "in-process:///stories/123/comments" sample-comments-response
+         "in-process:///feeds/lobsters/hot" sample-feed-response
+         "in-process:///feeds/lobsters/hot?page=2" 
+         {:_links {:self {:href "in-process:///feeds/lobsters/hot?page=2"}
+                   :prev {:href "in-process:///feeds/lobsters/hot"}
+                   :next {:href "in-process:///feeds/lobsters/hot?page=3"}}
           :_embedded {:stories [{:id 4 :title "Story 4" :score 40}]}}}))
 
 ;; Save original router/server
@@ -87,9 +87,9 @@
     (let [path (:path request)
           query (:query request)
           lookup-url (if (seq query)
-                       (str "in-process://api" path "?"
+                       (str "in-process://" path "?"
                             (str/join "&" (map (fn [[k v]] (str (name k) "=" v)) query)))
-                       (str "in-process://api" path))]
+                       (str "in-process://" path))]
       (if-let [response (get @mock-responses lookup-url)]
         (js/Promise.resolve response)
         (js/Promise.reject (js/Error. (str "Mock not found for URL: " lookup-url)))))))
@@ -123,10 +123,10 @@
     (is (= "https://example.com/article"
            (helpers/hal-link sample-story-with-embedded :external)))
     
-    (is (= "in-process://api/stories/123/comments"
+    (is (= "in-process:///stories/123/comments"
            (helpers/hal-link sample-story-with-embedded :comments)))
     
-    (is (= "in-process://api/feeds/lobsters/hot?page=2"
+    (is (= "in-process:///feeds/lobsters/hot?page=2"
            (helpers/hal-link sample-feed-response :next))))
   
   (testing "Return nil when link not found"

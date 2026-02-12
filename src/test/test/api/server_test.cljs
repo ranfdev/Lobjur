@@ -32,9 +32,27 @@
 (deftest test-request-with-params
   (testing "Request with path params"
     (async done
-      (-> (s/GET test-app "in-process://api/items/42")
+      (-> (s/GET test-app "in-process:///items/42")
           (.then (fn [res]
                    (is (= "42" (:id res)))
+                   (done)))
+          (.catch (fn [err]
+                    (is false (str "Unexpected error: " (.-message err)))
+                    (done)))))))
+
+(deftest test-router-self-links-without-api-prefix
+  (testing "Router self links should not include /api and should remain followable"
+    (async done
+      (-> (router/GET "/")
+          (.then (fn [root]
+                   (is (= "in-process:///"
+                          (get-in root [:_links :self :href])))
+                   (is (= "in-process:///feeds"
+                          (get-in root [:_links :feeds :href])))
+                   (router/GET (get-in root [:_links :feeds :href]))))
+          (.then (fn [feeds]
+                   (is (= "in-process:///feeds"
+                          (get-in feeds [:_links :self :href])))
                    (done)))
           (.catch (fn [err]
                     (is false (str "Unexpected error: " (.-message err)))
@@ -126,21 +144,21 @@
                                      :query (:query request)}))
           srv (s/with-cache app)]
       (async done
-        (-> (s/GET srv "in-process://api/feeds/lobsters/")
+        (-> (s/GET srv "in-process:///feeds/lobsters/")
             (.then (fn [root-res]
                      (is (= "/feeds/lobsters" (:path root-res)))
-                     (s/GET srv "in-process://api/feeds/lobsters/hot/")))
+                     (s/GET srv "in-process:///feeds/lobsters/hot/")))
             (.then (fn [hot-res]
                      (is (= "/feeds/lobsters/hot" (:path hot-res)))
-                     (s/GET srv "in-process://api/feeds/lobsters/hot/?page=1")))
+                     (s/GET srv "in-process:///feeds/lobsters/hot/?page=1")))
             (.then (fn [hot-page-res]
                      (is (= "/feeds/lobsters/hot" (:path hot-page-res)))
                      (is (= {:page "1"} (:query hot-page-res)))
                      (is (= 3 @calls))
                      ;; Re-fetch same routes: should now hit cache.
-                     (js/Promise.all #js[(s/GET srv "in-process://api/feeds/lobsters/")
-                                         (s/GET srv "in-process://api/feeds/lobsters/hot/")
-                                         (s/GET srv "in-process://api/feeds/lobsters/hot/?page=1")])))
+                     (js/Promise.all #js[(s/GET srv "in-process:///feeds/lobsters/")
+                                         (s/GET srv "in-process:///feeds/lobsters/hot/")
+                                         (s/GET srv "in-process:///feeds/lobsters/hot/?page=1")])))
             (.then (fn [_]
                      (is (= 3 @calls))
                      (done)))

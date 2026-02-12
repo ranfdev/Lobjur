@@ -2,7 +2,7 @@
   "URL parsing and construction utilities for handling both in-process:// and https:// schemes.
    
    This namespace provides utilities to parse and construct URLs that support:
-   - in-process://api/... - Internal API routes handled by the router
+   - in-process:///... - Internal API routes handled by the router
    - https://... - External HTTP/HTTPS resources
    - Relative paths (default to in-process scheme)"
   (:require [clojure.string :as str]))
@@ -19,13 +19,13 @@
    - :query-params - Parsed query parameters as a map
    
    Examples:
-     (parse-url \"in-process://api/feeds/lobsters\")
+     (parse-url \"in-process:///feeds/lobsters\")
      => {:scheme :in-process 
          :path \"/feeds/lobsters\" 
          :query nil 
          :query-params {}}
      
-     (parse-url \"in-process://api/stories/123?format=json&embed=comments\")
+     (parse-url \"in-process:///stories/123?format=json&embed=comments\")
      => {:scheme :in-process 
          :path \"/stories/123\" 
          :query \"format=json&embed=comments\"
@@ -67,13 +67,19 @@
        :query-params (or query-params {})})
     
     ;; in-process:// URLs
-    (str/starts-with? url "in-process://api")
-    (let [without-scheme (subs url 17) ; Remove "in-process://api"
+    (str/starts-with? url "in-process://")
+    (let [without-scheme (subs url 13) ; Remove "in-process://"
+          ;; Backward compatibility for old in-process://api/... links
+          without-scheme (if (re-find #"^api(?:/|\?|$)" without-scheme)
+                           (subs without-scheme 3)
+                           without-scheme)
           [path-part query] (str/split without-scheme #"\?" 2)
           ;; Ensure path starts with /
-          normalized-path (if (str/starts-with? path-part "/")
-                            path-part
-                            (str "/" path-part))
+          normalized-path (if (str/blank? path-part)
+                            "/"
+                            (if (str/starts-with? path-part "/")
+                              path-part
+                              (str "/" path-part)))
           ;; Remove trailing slash if present (except for root "/")
           normalized-path (if (and (> (count normalized-path) 1)
                                    (str/ends-with? normalized-path "/"))
@@ -125,10 +131,10 @@
    
    Examples:
      (make-url :in-process \"/feeds/lobsters\")
-     => \"in-process://api/feeds/lobsters\"
+     => \"in-process:///feeds/lobsters\"
      
      (make-url :in-process \"/stories/123\" {:format \"json\" :embed \"comments\"})
-     => \"in-process://api/stories/123?format=json&embed=comments\"
+     => \"in-process:///stories/123?format=json&embed=comments\"
      
      (make-url :https \"https://example.com/page\")
      => \"https://example.com/page\"
@@ -153,7 +159,7 @@
                                   (for [[k v] query-params]
                                     (str (name k) "=" v))))
          base-url (case scheme
-                    :in-process (str "in-process://api" 
+                    :in-process (str "in-process://"
                                      (if (str/starts-with? path "/")
                                        path
                                        (str "/" path)))
@@ -170,7 +176,7 @@
   "Check if a URL uses the in-process scheme.
    
    Examples:
-     (in-process? \"in-process://api/feeds/lobsters\") => true
+     (in-process? \"in-process:///feeds/lobsters\") => true
      (in-process? \"/feeds/lobsters\") => true
      (in-process? \"https://example.com\") => false"
   [url]
@@ -182,7 +188,7 @@
    Examples:
      (external? \"https://example.com\") => true
      (external? \"http://example.com\") => true
-     (external? \"in-process://api/feeds\") => false
+     (external? \"in-process:///feeds\") => false
      (external? \"/feeds\") => false"
   [url]
   (let [scheme (:scheme (parse-url url))]
@@ -194,10 +200,10 @@
    
    Examples:
      (normalize-url \"/feeds/lobsters\")
-     => \"in-process://api/feeds/lobsters\"
+     => \"in-process:///feeds/lobsters\"
      
-     (normalize-url \"in-process://api/feeds/lobsters/\")
-     => \"in-process://api/feeds/lobsters\"
+     (normalize-url \"in-process:///feeds/lobsters/\")
+     => \"in-process:///feeds/lobsters\"
      
      (normalize-url \"https://example.com/page\")
      => \"https://example.com/page\""
@@ -210,7 +216,7 @@
    
    Examples:
      (add-query-params \"/feeds/lobsters\" {:page \"2\" :limit \"20\"})
-     => \"in-process://api/feeds/lobsters?page=2&limit=20\"
+     => \"in-process:///feeds/lobsters?page=2&limit=20\"
      
      (add-query-params \"https://example.com/api\" {:key \"abc\"})
      => \"https://example.com/api?key=abc\""
@@ -225,7 +231,7 @@
    For external URLs, returns the full URL.
    
    Examples:
-     (get-path \"in-process://api/feeds/lobsters\") => \"/feeds/lobsters\"
+     (get-path \"in-process:///feeds/lobsters\") => \"/feeds/lobsters\"
      (get-path \"/feeds/lobsters\") => \"/feeds/lobsters\"
      (get-path \"https://example.com/page\") => \"https://example.com/page\""
   [url]
@@ -235,7 +241,7 @@
   "Extract query parameters from a URL.
    
    Examples:
-     (get-query-params \"in-process://api/stories/123?format=json\")
+     (get-query-params \"in-process:///stories/123?format=json\")
      => {:format \"json\"}"
   [url]
   (:query-params (parse-url url)))
