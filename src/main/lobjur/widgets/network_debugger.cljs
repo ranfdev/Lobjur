@@ -1,18 +1,31 @@
 (ns lobjur.widgets.network-debugger
   (:require
    ["gjs.gi.Adw" :as Adw]
+   ["gjs.gi.Gdk" :as Gdk]
    ["gjs.gi.Gtk" :as Gtk]
    [api.debug :as debug]
+   [api.router :as router]
+   [api.server :as server]
+   [api.url :as url]
    [cljs.pprint :refer [pprint]]
+   [cljs.reader :as reader]
    [clojure.string :as str]))
 
 (defonce debugger-window* (atom nil))
+
+(defn- load-gtksource []
+  (try
+    (js* "imports.gi.GtkSource")
+    (catch :default _
+      nil)))
+
+(defonce gtksource* (delay (load-gtksource)))
 
 (defn- request-url [{:keys [path query]}]
   (let [path (or path "")]
     (if (seq query)
       (str path "?"
-         (str/join "&" (map (fn [[k v]] (str (name k) "=" v)) query)))
+           (str/join "&" (map (fn [[k v]] (str (name k) "=" v)) query)))
       path)))
 
 (defn- in-process-entry? [entry]
@@ -44,8 +57,8 @@
                                        (for [[k v] embedded]
                                          (str (name k) "=" (if (coll? v) (count v) 1)))))]
       (str "type: map"
-            "\nkeys: " (str/join ", " (map #(if (keyword? %) (name %) (str %)) (keys response)))
-            (when (seq links)
+           "\nkeys: " (str/join ", " (map #(if (keyword? %) (name %) (str %)) (keys response)))
+           (when (seq links)
              (str "\nlinks: " (str/join ", " (map #(if (keyword? %) (name %) (str %)) links))))
            (when (seq embedded-summary)
              (str "\nembedded: " embedded-summary))))
@@ -57,6 +70,14 @@
 (defn- set-text! [text-view text]
   (let [buffer (.get_buffer ^js text-view)]
     (.set_text ^js buffer (or text "") -1)))
+
+(defn- get-buffer-text [buffer]
+  (let [start (.get_start_iter ^js buffer)
+        end (.get_end_iter ^js buffer)]
+    (.get_text ^js buffer start end false)))
+
+(defn- set-buffer-text! [buffer text]
+  (.set_text ^js buffer (or text "") -1))
 
 (defn- clear-list! [list-box]
   (loop [child (.get_first_child ^js list-box)]
@@ -99,10 +120,7 @@
                  "ok"
                  (str "error - " (:error entry)))
         request-body (some-> (:body request) pretty-str (truncate-text 6000))
-        response (:response entry)
-        response-body (if (= :ok (:status entry))
-                        (truncate-text (pretty-str response) 12000)
-                        (or (:error entry) "Unknown error"))]
+        response (:response entry)]
     (str "Method: " method
          "\nURL: " url
          "\nStatus: " status
@@ -115,9 +133,103 @@
          "\n\nResponse Summary:\n"
          (if (= :ok (:status entry))
            (response-summary response)
-           "type: error")
-         "\n\nResponse Body:\n"
-         response-body)))
+           "type: error"))))
+
+(defn- entry-response-text [entry]
+  (if (nil? entry)
+    ""
+    (let [response-body (if (= :ok (:status entry))
+                          (pretty-str (:response entry))
+                          (or (:error entry) "Unknown error"))]
+      (truncate-text response-body 40000))))
+
+(defn- response-language-candidates [entry response-text]
+  (let [response (:response entry)]
+    (cond
+      (or (map? response) (vector? response) (seq? response)) ["clojure" "edn" "json"]
+      (and (string? response)
+           (re-find #"^\s*[\{\[]" response)) ["json" "clojure" "edn"]
+      (re-find #"^\s*[\{\[]" (or response-text "")) ["json" "clojure" "edn"]
+      :else ["clojure" "edn" "json"])))
+
+(defn- select-language [manager entry response-text]
+  (some (fn [lang-id]
+          (.get_language ^js manager lang-id))
+        (response-language-candidates entry response-text)))
+
+(defn- make-response-pane []
+  (if-let [GtkSource @gtksource*]
+    (try
+      (let [buffer (js* "new (~{}).Buffer()" GtkSource)
+            view (js* "(~{}).View.new_with_buffer(~{})" GtkSource buffer)
+            manager (js* "(~{}).LanguageManager.get_default()" GtkSource)]
+        (.set_highlight_syntax ^js buffer true)
+        (.set_monospace ^js view true)
+        (.set_editable ^js view false)
+        (.set_show_line_numbers ^js view true)
+        {:widget view
+         :set-response! (fn [entry]
+                          (if entry
+                            (let [response-text (entry-response-text entry)
+                                  language (when manager
+                                             (select-language manager entry response-text))]
+                              (.set_text ^js buffer response-text -1)
+                              (.set_language ^js buffer language))
+                            (do
+                              (.set_text ^js buffer "" -1)
+                              (.set_language ^js buffer nil))))})
+      (catch :default _
+        (let [view (Gtk/TextView.)]
+          (.set_editable ^js view false)
+          (.set_monospace ^js view true)
+          (.set_wrap_mode ^js view Gtk/WrapMode.WORD_CHAR)
+          {:widget view
+           :set-response! (fn [entry]
+                            (set-text! view (entry-response-text entry)))})))
+    (let [view (Gtk/TextView.)]
+      (.set_editable ^js view false)
+      (.set_monospace ^js view true)
+      (.set_wrap_mode ^js view Gtk/WrapMode.WORD_CHAR)
+      {:widget view
+       :set-response! (fn [entry]
+                        (set-text! view (entry-response-text entry)))})))
+
+(defn- method->text [method]
+  (-> (or method :GET) name str/upper-case))
+
+(defn- body->text [body]
+  (cond
+    (nil? body) ""
+    (string? body) body
+    :else (pretty-str body)))
+
+(defn- entry->form [entry]
+  (let [request (:request entry)]
+    {:method (method->text (:method request))
+     :url (request-url request)
+     :body (body->text (:body request))}))
+
+(defn- parse-body-text [text]
+  (let [trimmed (str/trim (or text ""))]
+    (if (str/blank? trimmed)
+      nil
+      (try
+        (js->clj (js/JSON.parse trimmed) :keywordize-keys true)
+        (catch :default _
+          (try
+            (reader/read-string trimmed)
+            (catch :default _
+              trimmed)))))))
+
+(defn- form->request [method-text url-text body-text bypass-cache?]
+  (let [method (let [m (-> (or method-text "") str/trim str/upper-case)]
+                 (if (str/blank? m) "GET" m))
+        {:keys [path query-params]} (url/parse-url (str/trim (or url-text "")))]
+    (cond-> {:method (keyword method)
+             :path path
+             :query query-params
+             :body (parse-body-text body-text)}
+      bypass-cache? (assoc :cache? false))))
 
 (defn- visible-entries [query-text]
   (let [q (str/lower-case (or query-text ""))]
@@ -139,19 +251,50 @@
              #js {:application app
                   :title "Network Debugger"
                   :default_width 980
-                  :default_height 640})
+                  :default_height 700})
         _ (when parent (.set_transient_for ^js win parent))
         toolbar (Adw/ToolbarView.)
         header (Adw/HeaderBar.)
         list-box (Gtk/ListBox.)
         list-scroll (Gtk/ScrolledWindow.)
-        details-view (Gtk/TextView.)
-        details-scroll (Gtk/ScrolledWindow.)
         search-entry (Gtk/SearchEntry.)
         pause-btn (Gtk/ToggleButton. #js {:label "Pause"})
         clear-btn (Gtk/Button. #js {:label "Clear"})
         paned (Gtk/Paned. #js {:orientation Gtk/Orientation.HORIZONTAL})
-        ui-state (atom {:query "" :selected-id nil :paused? false})
+        right-paned (Gtk/Paned. #js {:orientation Gtk/Orientation.VERTICAL})
+        composer-box (Gtk/Box. #js {:orientation Gtk/Orientation.VERTICAL
+                                    :spacing 8
+                                    :margin_top 8
+                                    :margin_bottom 8
+                                    :margin_start 8
+                                    :margin_end 8})
+        request-row (Gtk/Box. #js {:orientation Gtk/Orientation.HORIZONTAL :spacing 8})
+        action-row (Gtk/Box. #js {:orientation Gtk/Orientation.HORIZONTAL :spacing 8})
+        method-entry (Gtk/Entry. #js {:width_chars 7 :hexpand false})
+        url-entry (Gtk/Entry. #js {:hexpand true})
+        send-btn (Gtk/Button. #js {:label "Send"})
+        replay-btn (Gtk/Button. #js {:label "Replay Selected"})
+        clear-form-btn (Gtk/Button. #js {:label "Clear Form"})
+        bypass-label (Gtk/Label. #js {:label "Bypass cache" :xalign 0.0})
+        bypass-switch (Gtk/Switch. #js {:active true})
+        body-view (Gtk/TextView.)
+        body-buffer (.get_buffer ^js body-view)
+        body-scroll (Gtk/ScrolledWindow.)
+        details-view (Gtk/TextView.)
+        details-scroll (Gtk/ScrolledWindow.)
+        response-pane (make-response-pane)
+        response-scroll (Gtk/ScrolledWindow.)
+        response-box (Gtk/Box. #js {:orientation Gtk/Orientation.VERTICAL
+                                    :spacing 8
+                                    :margin_top 8
+                                    :margin_bottom 8
+                                    :margin_start 8
+                                    :margin_end 8})
+        ui-state (atom {:query ""
+                        :selected-id nil
+                        :paused? false
+                        :hydrated-id nil
+                        :sending? false})
         watch-key (str "network-debugger-" (js/Date.now) "-" (rand-int 1000000))]
     (.set_title_widget ^js header (Adw/WindowTitle. #js {:title "In-Process REST Debugger"}))
     (.set_placeholder_text ^js search-entry "Filter by method or URL")
@@ -166,14 +309,48 @@
     (.set_policy ^js list-scroll Gtk/PolicyType.NEVER Gtk/PolicyType.AUTOMATIC)
     (.set_child ^js list-scroll list-box)
 
+    (.set_placeholder_text ^js method-entry "GET")
+    (.set_text ^js method-entry "GET")
+    (.set_placeholder_text ^js url-entry "/feeds/lobsters/hot")
+    (.set_hexpand ^js url-entry true)
+    (.set_wrap_mode ^js body-view Gtk/WrapMode.WORD_CHAR)
+    (.set_monospace ^js body-view true)
+    (.set_policy ^js body-scroll Gtk/PolicyType.AUTOMATIC Gtk/PolicyType.AUTOMATIC)
+    (.set_min_content_height ^js body-scroll 120)
+    (.set_child ^js body-scroll body-view)
+
+    (.append ^js request-row method-entry)
+    (.append ^js request-row url-entry)
+    (.append ^js request-row send-btn)
+    (.append ^js action-row replay-btn)
+    (.append ^js action-row clear-form-btn)
+    (.append ^js action-row bypass-label)
+    (.append ^js action-row bypass-switch)
+    (.append ^js composer-box request-row)
+    (.append ^js composer-box action-row)
+    (.append ^js composer-box body-scroll)
+
     (.set_editable ^js details-view false)
     (.set_monospace ^js details-view true)
     (.set_wrap_mode ^js details-view Gtk/WrapMode.WORD_CHAR)
     (.set_policy ^js details-scroll Gtk/PolicyType.AUTOMATIC Gtk/PolicyType.AUTOMATIC)
+    (.set_min_content_height ^js details-scroll 180)
     (.set_child ^js details-scroll details-view)
 
+    (.set_policy ^js response-scroll Gtk/PolicyType.AUTOMATIC Gtk/PolicyType.AUTOMATIC)
+    (.set_child ^js response-scroll (:widget response-pane))
+
+    (.append ^js response-box details-scroll)
+    (.append ^js response-box response-scroll)
+
+    (.set_start_child ^js right-paned composer-box)
+    (.set_end_child ^js right-paned response-box)
+    (.set_resize_start_child ^js right-paned false)
+    (.set_shrink_start_child ^js right-paned false)
+    (.set_position ^js right-paned 220)
+
     (.set_start_child ^js paned list-scroll)
-    (.set_end_child ^js paned details-scroll)
+    (.set_end_child ^js paned right-paned)
     (.set_resize_start_child ^js paned true)
     (.set_shrink_start_child ^js paned false)
     (.set_position ^js paned 420)
@@ -181,7 +358,55 @@
     (.set_content ^js toolbar paned)
     (.set_content ^js win toolbar)
 
-    (letfn [(render! []
+    (letfn [(selected-entry []
+              (let [entry-id (:selected-id @ui-state)]
+                (first (filter #(= entry-id (:id %))
+                               (visible-entries (:query @ui-state))))))
+            (update-replay-sensitive! []
+              (.set_sensitive ^js replay-btn
+                              (and (not (:sending? @ui-state))
+                                   (some? (selected-entry)))))
+            (hydrate-composer! [entry]
+              (let [{:keys [method url body]} (entry->form entry)]
+                (.set_text ^js method-entry method)
+                (.set_text ^js url-entry url)
+                (set-buffer-text! body-buffer body)))
+            (show-entry! [entry]
+              (if entry
+                (do
+                  (set-text! details-view (entry-details-text entry))
+                  ((:set-response! response-pane) entry))
+                (do
+                  (set-text! details-view "Select a request to inspect response details.")
+                  ((:set-response! response-pane) nil))))
+            (set-sending! [sending?]
+              (swap! ui-state assoc :sending? sending?)
+              (.set_sensitive ^js send-btn (not sending?))
+              (.set_sensitive ^js clear-form-btn (not sending?))
+              (update-replay-sensitive!))
+            (send-current! []
+              (try
+                (let [request (form->request (.get_text ^js method-entry)
+                                             (.get_text ^js url-entry)
+                                             (get-buffer-text body-buffer)
+                                             (.get_active ^js bypass-switch))]
+                  (set-sending! true)
+                  (-> (server/request router/server request)
+                      (.then (fn [_]
+                               (let [latest-id (:id (peek @debug/*history*))]
+                                 (swap! ui-state assoc :selected-id latest-id :hydrated-id latest-id)
+                                 (render!)
+                                 (set-sending! false))))
+                      (.catch (fn [_]
+                                (let [latest-id (:id (peek @debug/*history*))]
+                                  (swap! ui-state assoc :selected-id latest-id :hydrated-id latest-id)
+                                  (render!)
+                                  (set-sending! false))))))
+                (catch :default e
+                  (set-sending! false)
+                  (set-text! details-view (str "Failed to send request: " (.-message e)))
+                  ((:set-response! response-pane) nil))))
+            (render! []
               (let [entries (visible-entries (:query @ui-state))
                     selected-id (or (:selected-id @ui-state)
                                     (some-> entries first :id))
@@ -190,16 +415,19 @@
                 (if (seq entries)
                   (doseq [entry entries]
                     (.append ^js list-box (make-row entry)))
-                  (set-text! details-view "No in-process requests captured yet."))
+                  (do
+                    (set-text! details-view "No in-process requests captured yet.")
+                    ((:set-response! response-pane) nil)))
                 (if-let [row (and selected-entry (find-row-by-entry-id list-box selected-id))]
                   (do
                     (.select_row ^js list-box row)
-                    (set-text! details-view (entry-details-text selected-entry)))
+                    (show-entry! selected-entry))
                   (do
                     (.select_row ^js list-box nil)
                     (when (seq entries)
-                      (set-text! details-view "Select a request to inspect response details."))))
-                (swap! ui-state assoc :selected-id (some-> selected-entry :id))))]
+                      (show-entry! nil))))
+                (swap! ui-state assoc :selected-id (some-> selected-entry :id))
+                (update-replay-sensitive!)))]
       (.connect list-box "row-selected"
                 (fn [_ row]
                   (if row
@@ -207,18 +435,22 @@
                           entry (first (filter #(= entry-id (:id %))
                                                (visible-entries (:query @ui-state))))]
                       (swap! ui-state assoc :selected-id entry-id)
-                      (set-text! details-view
-                                 (if entry
-                                   (entry-details-text entry)
-                                   "Select a request to inspect response details.")))
-                    (swap! ui-state assoc :selected-id nil))))
+                      (show-entry! entry)
+                      (when (and entry
+                                 (not= entry-id (:hydrated-id @ui-state)))
+                        (hydrate-composer! entry)
+                        (swap! ui-state assoc :hydrated-id entry-id))
+                      (update-replay-sensitive!))
+                    (do
+                      (swap! ui-state assoc :selected-id nil)
+                      (update-replay-sensitive!)))))
       (.connect search-entry "search-changed"
                 (fn [entry]
                   (swap! ui-state assoc :query (.get_text ^js entry))
                   (render!)))
       (.connect clear-btn "clicked"
                 (fn [_]
-                  (swap! ui-state assoc :selected-id nil)
+                  (swap! ui-state assoc :selected-id nil :hydrated-id nil)
                   (debug/clear-history!)
                   (render!)))
       (.connect pause-btn "toggled"
@@ -227,6 +459,30 @@
                     (swap! ui-state assoc :paused? paused?)
                     (when-not paused?
                       (render!)))))
+      (.connect send-btn "clicked" (fn [_] (send-current!)))
+      (.connect replay-btn "clicked"
+                (fn [_]
+                  (when-let [entry (selected-entry)]
+                    (hydrate-composer! entry)
+                    (swap! ui-state assoc :hydrated-id (:id entry))
+                    (send-current!))))
+      (.connect clear-form-btn "clicked"
+                (fn [_]
+                  (.set_text ^js method-entry "GET")
+                  (.set_text ^js url-entry "")
+                  (set-buffer-text! body-buffer "")))
+      (let [controller (Gtk/EventControllerKey.)]
+        (.connect controller "key-pressed"
+                  (fn [_ keyval _ state]
+                    (let [ctrl? (not= 0 (bit-and state Gdk/ModifierType.CONTROL_MASK))
+                          enter? (or (= keyval Gdk/KEY_Return)
+                                     (= keyval Gdk/KEY_KP_Enter))]
+                      (if (and ctrl? enter?)
+                        (do
+                          (send-current!)
+                          true)
+                        false))))
+        (.add_controller ^js body-view controller))
       (add-watch debug/*history* watch-key
                  (fn [_ _ _ _]
                    (when-not (:paused? @ui-state)
