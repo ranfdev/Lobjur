@@ -13,14 +13,6 @@
 
 (defonce debugger-window* (atom nil))
 
-(defn- load-gtksource []
-  (try
-    (js* "imports.gi.GtkSource")
-    (catch :default _
-      nil)))
-
-(defonce gtksource* (delay (load-gtksource)))
-
 (defn- request-url [{:keys [path query]}]
   (let [path (or path "")]
     (if (seq query)
@@ -34,13 +26,16 @@
          (not (str/starts-with? path "https://"))
          (not (str/starts-with? path "http://")))))
 
-(defn- pretty-str [value]
-  (if (string? value)
-    value
-    (with-out-str
-      (binding [*print-level* 6
-                *print-length* 200]
-        (pprint value)))))
+(defn- pretty-str
+  ([value]
+   (pretty-str value {:print-level 12 :print-length 2000}))
+  ([value {:keys [print-level print-length]}]
+   (if (string? value)
+     value
+     (with-out-str
+       (binding [*print-level* print-level
+                 *print-length* print-length]
+         (pprint value))))))
 
 (defn- truncate-text [s max-len]
   (if (> (count s) max-len)
@@ -139,60 +134,19 @@
   (if (nil? entry)
     ""
     (let [response-body (if (= :ok (:status entry))
-                          (pretty-str (:response entry))
+                          (pretty-str (:response entry) {:print-level 12
+                                                         :print-length 2500})
                           (or (:error entry) "Unknown error"))]
       (truncate-text response-body 40000))))
 
-(defn- response-language-candidates [entry response-text]
-  (let [response (:response entry)]
-    (cond
-      (or (map? response) (vector? response) (seq? response)) ["clojure" "edn" "json"]
-      (and (string? response)
-           (re-find #"^\s*[\{\[]" response)) ["json" "clojure" "edn"]
-      (re-find #"^\s*[\{\[]" (or response-text "")) ["json" "clojure" "edn"]
-      :else ["clojure" "edn" "json"])))
-
-(defn- select-language [manager entry response-text]
-  (some (fn [lang-id]
-          (.get_language ^js manager lang-id))
-        (response-language-candidates entry response-text)))
-
 (defn- make-response-pane []
-  (if-let [GtkSource @gtksource*]
-    (try
-      (let [buffer (js* "new (~{}).Buffer()" GtkSource)
-            view (js* "(~{}).View.new_with_buffer(~{})" GtkSource buffer)
-            manager (js* "(~{}).LanguageManager.get_default()" GtkSource)]
-        (.set_highlight_syntax ^js buffer true)
-        (.set_monospace ^js view true)
-        (.set_editable ^js view false)
-        (.set_show_line_numbers ^js view true)
-        {:widget view
-         :set-response! (fn [entry]
-                          (if entry
-                            (let [response-text (entry-response-text entry)
-                                  language (when manager
-                                             (select-language manager entry response-text))]
-                              (.set_text ^js buffer response-text -1)
-                              (.set_language ^js buffer language))
-                            (do
-                              (.set_text ^js buffer "" -1)
-                              (.set_language ^js buffer nil))))})
-      (catch :default _
-        (let [view (Gtk/TextView.)]
-          (.set_editable ^js view false)
-          (.set_monospace ^js view true)
-          (.set_wrap_mode ^js view Gtk/WrapMode.WORD_CHAR)
-          {:widget view
-           :set-response! (fn [entry]
-                            (set-text! view (entry-response-text entry)))})))
-    (let [view (Gtk/TextView.)]
+  (let [view (Gtk/TextView.)]
       (.set_editable ^js view false)
       (.set_monospace ^js view true)
-      (.set_wrap_mode ^js view Gtk/WrapMode.WORD_CHAR)
+      (.set_vexpand ^js view true)
       {:widget view
        :set-response! (fn [entry]
-                        (set-text! view (entry-response-text entry)))})))
+                        (set-text! view (entry-response-text entry)))}))
 
 (defn- method->text [method]
   (-> (or method :GET) name str/upper-case))
@@ -276,7 +230,7 @@
         replay-btn (Gtk/Button. #js {:label "Replay Selected"})
         clear-form-btn (Gtk/Button. #js {:label "Clear Form"})
         bypass-label (Gtk/Label. #js {:label "Bypass cache" :xalign 0.0})
-        bypass-switch (Gtk/Switch. #js {:active true})
+        bypass-switch (Gtk/Switch. #js {:active true :valign Gtk/Align.CENTER})
         body-view (Gtk/TextView.)
         body-buffer (.get_buffer ^js body-view)
         body-scroll (Gtk/ScrolledWindow.)
@@ -391,21 +345,21 @@
                                              (get-buffer-text body-buffer)
                                              (.get_active ^js bypass-switch))]
                   (set-sending! true)
-                  (-> (server/request router/server request)
-                      (.then (fn [_]
-                               (let [latest-id (:id (peek @debug/*history*))]
-                                 (swap! ui-state assoc :selected-id latest-id :hydrated-id latest-id)
-                                 (render!)
-                                 (set-sending! false))))
-                      (.catch (fn [_]
+                   (-> (server/request router/server request)
+                       (.then (fn [_]
                                 (let [latest-id (:id (peek @debug/*history*))]
+                                  (set-sending! false)
                                   (swap! ui-state assoc :selected-id latest-id :hydrated-id latest-id)
-                                  (render!)
-                                  (set-sending! false))))))
-                (catch :default e
-                  (set-sending! false)
-                  (set-text! details-view (str "Failed to send request: " (.-message e)))
-                  ((:set-response! response-pane) nil))))
+                                  (render!))))
+                       (.catch (fn [_]
+                                 (let [latest-id (:id (peek @debug/*history*))]
+                                   (set-sending! false)
+                                   (swap! ui-state assoc :selected-id latest-id :hydrated-id latest-id)
+                                   (render!))))))
+                 (catch :default e
+                   (set-sending! false)
+                   (set-text! details-view (str "Failed to send request: " (.-message e)))
+                   ((:set-response! response-pane) nil))))
             (render! []
               (let [entries (visible-entries (:query @ui-state))
                     selected-id (or (:selected-id @ui-state)
@@ -483,10 +437,11 @@
                           true)
                         false))))
         (.add_controller ^js body-view controller))
-      (add-watch debug/*history* watch-key
-                 (fn [_ _ _ _]
-                   (when-not (:paused? @ui-state)
-                     (render!))))
+       (add-watch debug/*history* watch-key
+                  (fn [_ _ _ _]
+                    (when (and (not (:paused? @ui-state))
+                               (not (:sending? @ui-state)))
+                      (render!))))
       (.connect win "close-request"
                 (fn [_]
                   (remove-watch debug/*history* watch-key)
