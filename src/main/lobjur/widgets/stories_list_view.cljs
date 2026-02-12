@@ -7,7 +7,6 @@
    [lobjur.state :as state :refer [global-widgets]]
    [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
-   [api.sources :as sources]
    [api.helpers :refer [fetch-collection external-url next-page prev-page has-relation? hal-link placeholder?]]
    [rollui.core :as rollui :refer [build-ui derived-atom]]
    [rollui.resource :as r]
@@ -194,34 +193,55 @@
   (let [stack (Adw/ViewStack.)
         src-id (:id source)]
     (doseq [{:keys [title id icon]} (:feeds source)]
-      (doto (.add_titled stack
-                         (build-ui (stories-list-view (str "/feeds/" src-id "/" id)))
+     (doto (.add_titled stack
+                         (build-ui (stories-list-view (str "/" src-id "/feeds/" id)))
                          id
                          title)
-        (.set_icon_name icon)))
-    stack))
+         (.set_icon_name icon)))
+     stack))
 
 (defn home-stories []
   (let [content-bin (Adw/Bin.)
-        initial-stack (build-view-stack (first sources/sources))
-        dropdown (Gtk/DropDown.
-                  #js {:model (Gtk/StringList.
-                               #js {:strings (into-array (mapv :name sources/sources))})})]
-    (.set_child content-bin initial-stack)
-    (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-      (.set_stack ^js bar initial-stack))
+        dropdown (Gtk/DropDown.)
+        loaded-sources (atom [])]
+    (.set_model ^js dropdown (Gtk/StringList. #js {:strings #js []}))
+    (.set_child ^js content-bin
+                (build-ui [Adw/Spinner :halign Gtk/Align.CENTER :valign Gtk/Align.CENTER]))
     (.connect dropdown "notify::selected"
               (fn [_]
                 (let [idx (.get_selected dropdown)
-                      source (nth sources/sources idx)
-                      new-stack (build-view-stack source)]
-                  (.set_child content-bin new-stack)
-                  (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                    (.set_stack ^js bar new-stack))
-                  (swap! state/state assoc :search-href
-                         (get-in source [:extra-links :search])))))
+                      source (nth @loaded-sources idx nil)]
+                  (when source
+                    (let [new-stack (build-view-stack source)]
+                      (.set_child content-bin new-stack)
+                      (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                        (.set_stack ^js bar new-stack))
+                      (swap! state/state assoc :search-href
+                             (get-in source [:extra-links :search])))))))
+    (-> (api/GET "/")
+        (.then #(fetch-collection % :sources {:default []}))
+        (.then (fn [sources]
+                 (let [sources (vec sources)
+                       source-names (into-array (mapv :name sources))]
+                   (reset! loaded-sources sources)
+                   (.set_model ^js dropdown (Gtk/StringList. #js {:strings source-names}))
+                   (when-let [initial-source (first sources)]
+                     (let [initial-stack (build-view-stack initial-source)]
+                       (.set_child content-bin initial-stack)
+                       (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                         (.set_stack ^js bar initial-stack))
+                       (.set_selected ^js dropdown 0)
+                       (swap! state/state assoc :search-href
+                              (get-in initial-source [:extra-links :search])))))))
+        (.catch (fn [err]
+                  (.set_child ^js content-bin
+                              (build-ui [Adw/StatusPage
+                                         :icon_name "dialog-error-symbolic"
+                                         :title "Failed to load sources"
+                                         :description (str err)]))
+                  (swap! state/state assoc :search-href nil))))
     (swap! state/global-widgets assoc
-           :home-dropdown dropdown)
+            :home-dropdown dropdown)
     [Gtk/Box
      ::rollui/ref-in [global-widgets :home]
      :orientation Gtk/Orientation.VERTICAL

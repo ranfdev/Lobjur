@@ -3,7 +3,7 @@
 
    Request map shape:
      {:method  :GET
-      :path    \"/feeds\"
+      :path    \"/lobsters/feeds/hot\"
       :query   {}
       :params  {}
       :body    nil

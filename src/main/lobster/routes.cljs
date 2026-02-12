@@ -69,10 +69,10 @@
 (defn- source-index-handler [_request]
   (js/Promise.resolve
    (hal/resource
-    {:self   (hal/link "/feeds/lobsters")
-     :hot    (hal/link "/feeds/lobsters/hot")
-     :newest (hal/link "/feeds/lobsters/newest")
-     :tags   (hal/link "/feeds/lobsters/tags")}
+    {:self   (hal/link "/lobsters")
+     :hot    (hal/link "/lobsters/feeds/hot")
+     :newest (hal/link "/lobsters/feeds/newest")
+     :tags   (hal/link "/lobsters/feeds/tags")}
     {:name        "Lobsters"
      :description "Computing-focused link aggregator"})))
 
@@ -80,7 +80,7 @@
   (-> (lobster/tags)
       (.then (fn [tags]
                (hal/collection
-                "/feeds/lobsters/tags" :tags
+                "/lobsters/feeds/tags" :tags
                 (mapv (fn [tag]
                         (let [tag-name (:tag tag)]
                           {:name        tag-name
@@ -96,7 +96,7 @@
                    "hot"    lobster/hottest
                    "newest" lobster/active
                    lobster/hottest)
-        base-href (str "/feeds/lobsters/" feed)
+        base-href (str "/lobsters/feeds/" feed)
         query-params (dissoc query :page)]
     (-> (fetch-fn :page page)
         (.then (fn [stories]
@@ -113,13 +113,13 @@
       (.then (fn [story]
                (let [id (:short_id story)]
                  (hal/resource
-                  (merge (hal/story-links "lobsters" id
-                                          :external-url (not-empty (:url story))
-                                          :author (:submitter_user story)
-                                          :tags (:tags story)
-                                          :domain (parse-host (:url story)))
-                         {:feed (hal/link "/feeds/lobsters")})
-                  {:id            id
+                   (merge (hal/story-links "lobsters" id
+                                           :external-url (not-empty (:url story))
+                                           :author (:submitter_user story)
+                                           :tags (:tags story)
+                                           :domain (parse-host (:url story)))
+                          {:feed (hal/link "/lobsters")})
+                   {:id            id
                    :provider      "lobsters"
                    :title         (:title story)
                    :url           (:url story)
@@ -213,20 +213,14 @@
 ;; --- Assembled subrouter ---
 
 (def handler
-  (r/routes
-   ;; Feed-related routes (under /feeds/lobsters)
-   (r/mount "/feeds/lobsters"
-            (r/routes
-             (r/route "/"      source-index-handler)
-             (r/route "/tags"  tags-handler)
-             (r/route "/{feed}" feed-handler)))
-
-   ;; Resource routes (under /lobsters)
-   (r/mount "/lobsters"
-            (r/routes
-             (r/route "/stories/{id}"            story-handler)
-             (r/route "/stories/{id}/comments"   comments-handler)
-             (r/route "/users/{username}"         user-handler)
-             (r/route "/users/{username}/stories" user-stories-handler)
-             (r/route "/tags/{tag}/stories"       tag-stories-handler)
-             (r/route "/domains/{domain}/stories" domain-stories-handler)))))
+  (r/mount "/lobsters"
+           (r/routes
+            (r/route "/"                         source-index-handler)
+            (r/route "/feeds/tags"               tags-handler)
+            (r/route "/feeds/{feed}"             feed-handler)
+            (r/route "/stories/{id}"             story-handler)
+            (r/route "/stories/{id}/comments"    comments-handler)
+            (r/route "/users/{username}"         user-handler)
+            (r/route "/users/{username}/stories" user-stories-handler)
+            (r/route "/tags/{tag}/stories"       tag-stories-handler)
+            (r/route "/domains/{domain}/stories" domain-stories-handler))))

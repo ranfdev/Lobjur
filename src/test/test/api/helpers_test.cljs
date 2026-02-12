@@ -36,16 +36,16 @@
 
 (def sample-feed-response
   "Paginated feed response with embedded stories"
-  {:_links {:self {:href "in-process:///feeds/lobsters/hot"}
-            :next {:href "in-process:///feeds/lobsters/hot?page=2"}}
+  {:_links {:self {:href "in-process:///lobsters/feeds/hot"}
+            :next {:href "in-process:///lobsters/feeds/hot?page=2"}}
    :_embedded {:stories [{:id 1 :title "Story 1" :score 10}
                         {:id 2 :title "Story 2" :score 20}
                         {:id 3 :title "Story 3" :score 30}]}})
 
 (def sample-feed-last-page
   "Last page of feed with no next link"
-  {:_links {:self {:href "in-process:///feeds/lobsters/hot?page=5"}
-            :prev {:href "in-process:///feeds/lobsters/hot?page=4"}}
+  {:_links {:self {:href "in-process:///lobsters/feeds/hot?page=5"}
+            :prev {:href "in-process:///lobsters/feeds/hot?page=4"}}
    :_embedded {:stories [{:id 99 :title "Last Story" :score 5}]}})
 
 (def sample-author-response
@@ -71,11 +71,11 @@
   (atom {"in-process:///users/bob" sample-author-response
          "in-process:///stories/456/comments" sample-comments-response
          "in-process:///stories/123/comments" sample-comments-response
-         "in-process:///feeds/lobsters/hot" sample-feed-response
-         "in-process:///feeds/lobsters/hot?page=2" 
-         {:_links {:self {:href "in-process:///feeds/lobsters/hot?page=2"}
-                   :prev {:href "in-process:///feeds/lobsters/hot"}
-                   :next {:href "in-process:///feeds/lobsters/hot?page=3"}}
+         "in-process:///lobsters/feeds/hot" sample-feed-response
+         "in-process:///lobsters/feeds/hot?page=2" 
+         {:_links {:self {:href "in-process:///lobsters/feeds/hot?page=2"}
+                   :prev {:href "in-process:///lobsters/feeds/hot"}
+                   :next {:href "in-process:///lobsters/feeds/hot?page=3"}}
           :_embedded {:stories [{:id 4 :title "Story 4" :score 40}]}}}))
 
 ;; Save original router/server
@@ -126,7 +126,7 @@
     (is (= "in-process:///stories/123/comments"
            (helpers/hal-link sample-story-with-embedded :comments)))
     
-    (is (= "in-process:///feeds/lobsters/hot?page=2"
+    (is (= "in-process:///lobsters/feeds/hot?page=2"
            (helpers/hal-link sample-feed-response :next))))
   
   (testing "Return nil when link not found"

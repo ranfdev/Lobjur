@@ -265,7 +265,7 @@
 
     (.set_placeholder_text ^js method-entry "GET")
     (.set_text ^js method-entry "GET")
-    (.set_placeholder_text ^js url-entry "/feeds/lobsters/hot")
+    (.set_placeholder_text ^js url-entry "/lobsters/feeds/hot")
     (.set_hexpand ^js url-entry true)
     (.set_wrap_mode ^js body-view Gtk/WrapMode.WORD_CHAR)
     (.set_monospace ^js body-view true)

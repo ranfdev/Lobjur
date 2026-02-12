@@ -4,18 +4,18 @@
 
 (deftest test-paginated-without-query-params
   (testing "Pagination without query parameters"
-    (let [resource {:_links {:self {:href "in-process:///feeds/lobsters/hot"}}
+    (let [resource {:_links {:self {:href "in-process:///lobsters/feeds/hot"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/lobsters/hot" 2
+          result (hal/paginated resource "/lobsters/feeds/hot" 2
                                 :has-next true
                                 :has-prev true)]
       
       (testing "should add next link with page parameter"
-        (is (= "in-process:///feeds/lobsters/hot?page=3"
+        (is (= "in-process:///lobsters/feeds/hot?page=3"
                (get-in result [:_links :next :href]))))
       
       (testing "should add prev link with page parameter"
-        (is (= "in-process:///feeds/lobsters/hot?page=1"
+        (is (= "in-process:///lobsters/feeds/hot?page=1"
                (get-in result [:_links :prev :href])))))))
 
 (deftest test-paginated-with-query-params
@@ -57,9 +57,9 @@
 
 (deftest test-paginated-first-page
   (testing "Pagination on first page"
-    (let [resource {:_links {:self {:href "in-process:///feeds/hackernews/top"}}
+    (let [resource {:_links {:self {:href "in-process:///hackernews/feeds/top"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/hackernews/top" 1
+          result (hal/paginated resource "/hackernews/feeds/top" 1
                                 :has-next true
                                 :has-prev false)]
       
@@ -67,19 +67,19 @@
         (is (nil? (get-in result [:_links :prev]))))
       
       (testing "should add next link"
-        (is (= "in-process:///feeds/hackernews/top?page=2"
+        (is (= "in-process:///hackernews/feeds/top?page=2"
                (get-in result [:_links :next :href])))))))
 
 (deftest test-paginated-last-page
   (testing "Pagination on last page"
-    (let [resource {:_links {:self {:href "in-process:///feeds/lobsters/hot"}}
+    (let [resource {:_links {:self {:href "in-process:///lobsters/feeds/hot"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/lobsters/hot" 5
+          result (hal/paginated resource "/lobsters/feeds/hot" 5
                                 :has-next false
                                 :has-prev true)]
       
       (testing "should add prev link"
-        (is (= "in-process:///feeds/lobsters/hot?page=4"
+        (is (= "in-process:///lobsters/feeds/hot?page=4"
                (get-in result [:_links :prev :href]))))
       
       (testing "should not add next link"
@@ -87,11 +87,11 @@
 
 (deftest test-paginated-preserves-original-resource
   (testing "Pagination should preserve original resource data"
-    (let [resource {:_links {:self {:href "in-process:///feeds/lobsters/hot"}
+    (let [resource {:_links {:self {:href "in-process:///lobsters/feeds/hot"}
                              :tags {:href "in-process:///tags"}}
                     :_embedded {:stories [{:title "Story 1"}]}
                     :total 42}
-          result (hal/paginated resource "/feeds/lobsters/hot" 2
+          result (hal/paginated resource "/lobsters/feeds/hot" 2
                                 :has-next true
                                 :has-prev true
                                 :query-params {:source "lobsters"})]
@@ -109,23 +109,23 @@
 
 (deftest test-paginated-edge-cases
   (testing "Pagination with empty query params"
-    (let [resource {:_links {:self {:href "in-process:///feeds/lobsters/hot"}}
+    (let [resource {:_links {:self {:href "in-process:///lobsters/feeds/hot"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/lobsters/hot" 1
+          result (hal/paginated resource "/lobsters/feeds/hot" 1
                                 :has-next true
                                 :query-params {})]
       
       (testing "should handle empty query params map"
-        (is (= "in-process:///feeds/lobsters/hot?page=2"
+        (is (= "in-process:///lobsters/feeds/hot?page=2"
                (get-in result [:_links :next :href]))))))
   
   (testing "Pagination with nil query params"
-    (let [resource {:_links {:self {:href "in-process:///feeds/lobsters/hot"}}
+    (let [resource {:_links {:self {:href "in-process:///lobsters/feeds/hot"}}
                     :_embedded {:stories []}}
-          result (hal/paginated resource "/feeds/lobsters/hot" 1
+          result (hal/paginated resource "/lobsters/feeds/hot" 1
                                 :has-next true
                                 :query-params nil)]
       
       (testing "should handle nil query params"
-        (is (= "in-process:///feeds/lobsters/hot?page=2"
+        (is (= "in-process:///lobsters/feeds/hot?page=2"
                (get-in result [:_links :next :href])))))))

@@ -19,9 +19,9 @@
    - :query-params - Parsed query parameters as a map
    
    Examples:
-     (parse-url \"in-process:///feeds/lobsters\")
+     (parse-url \"in-process:///lobsters/feeds\")
      => {:scheme :in-process 
-         :path \"/feeds/lobsters\" 
+         :path \"/lobsters/feeds\" 
          :query nil 
          :query-params {}}
      
@@ -37,9 +37,9 @@
          :query \"id=1\"
          :query-params {:id \"1\"}}
      
-     (parse-url \"/feeds/lobsters/hot\")
+     (parse-url \"/lobsters/feeds/hot\")
      => {:scheme :in-process 
-         :path \"/feeds/lobsters/hot\" 
+         :path \"/lobsters/feeds/hot\" 
          :query nil
          :query-params {}}"
   [url]
@@ -130,8 +130,8 @@
    - query-params: (optional) Map of query parameters
    
    Examples:
-     (make-url :in-process \"/feeds/lobsters\")
-     => \"in-process:///feeds/lobsters\"
+     (make-url :in-process \"/lobsters/feeds\")
+     => \"in-process:///lobsters/feeds\"
      
      (make-url :in-process \"/stories/123\" {:format \"json\" :embed \"comments\"})
      => \"in-process:///stories/123?format=json&embed=comments\"
@@ -176,8 +176,8 @@
   "Check if a URL uses the in-process scheme.
    
    Examples:
-     (in-process? \"in-process:///feeds/lobsters\") => true
-     (in-process? \"/feeds/lobsters\") => true
+     (in-process? \"in-process:///lobsters/feeds\") => true
+     (in-process? \"/lobsters/feeds\") => true
      (in-process? \"https://example.com\") => false"
   [url]
   (= :in-process (:scheme (parse-url url))))
@@ -185,11 +185,11 @@
 (defn external?
   "Check if a URL is an external HTTP/HTTPS URL.
    
-   Examples:
-     (external? \"https://example.com\") => true
-     (external? \"http://example.com\") => true
-     (external? \"in-process:///feeds\") => false
-     (external? \"/feeds\") => false"
+    Examples:
+      (external? \"https://example.com\") => true
+      (external? \"http://example.com\") => true
+      (external? \"in-process:///lobsters\") => false
+      (external? \"/lobsters\") => false"
   [url]
   (let [scheme (:scheme (parse-url url))]
     (or (= scheme :https) (= scheme :http))))
@@ -199,11 +199,11 @@
    This ensures consistent formatting and handles relative paths.
    
    Examples:
-     (normalize-url \"/feeds/lobsters\")
-     => \"in-process:///feeds/lobsters\"
+     (normalize-url \"/lobsters/feeds\")
+     => \"in-process:///lobsters/feeds\"
      
-     (normalize-url \"in-process:///feeds/lobsters/\")
-     => \"in-process:///feeds/lobsters\"
+     (normalize-url \"in-process:///lobsters/feeds/\")
+     => \"in-process:///lobsters/feeds\"
      
      (normalize-url \"https://example.com/page\")
      => \"https://example.com/page\""
@@ -215,8 +215,8 @@
   "Add query parameters to a URL.
    
    Examples:
-     (add-query-params \"/feeds/lobsters\" {:page \"2\" :limit \"20\"})
-     => \"in-process:///feeds/lobsters?page=2&limit=20\"
+     (add-query-params \"/lobsters/feeds\" {:page \"2\" :limit \"20\"})
+     => \"in-process:///lobsters/feeds?page=2&limit=20\"
      
      (add-query-params \"https://example.com/api\" {:key \"abc\"})
      => \"https://example.com/api?key=abc\""
@@ -231,8 +231,8 @@
    For external URLs, returns the full URL.
    
    Examples:
-     (get-path \"in-process:///feeds/lobsters\") => \"/feeds/lobsters\"
-     (get-path \"/feeds/lobsters\") => \"/feeds/lobsters\"
+     (get-path \"in-process:///lobsters/feeds\") => \"/lobsters/feeds\"
+     (get-path \"/lobsters/feeds\") => \"/lobsters/feeds\"
      (get-path \"https://example.com/page\") => \"https://example.com/page\""
   [url]
   (:path (parse-url url)))

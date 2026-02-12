@@ -84,10 +84,10 @@
 (defn- source-index-handler [_request]
   (js/Promise.resolve
    (hal/resource
-    {:self   (hal/link "/feeds/hackernews")
-     :top    (hal/link "/feeds/hackernews/top")
-     :newest (hal/link "/feeds/hackernews/newest")
-     :best   (hal/link "/feeds/hackernews/best")
+    {:self   (hal/link "/hackernews")
+     :top    (hal/link "/hackernews/feeds/top")
+     :newest (hal/link "/hackernews/feeds/newest")
+     :best   (hal/link "/hackernews/feeds/best")
      :search (hal/link "/hackernews/search")}
     {:name        "Hacker News"
      :description "Y Combinator's tech news aggregator"})))
@@ -100,7 +100,7 @@
                  "newest" hn/new-story-ids
                  "best"   hn/best-story-ids
                  hn/top-story-ids)
-        base-href (str "/feeds/hackernews/" feed)
+        base-href (str "/hackernews/feeds/" feed)
         query-params (dissoc query :page)]
     (-> (ids-fn)
         (.then (fn [ids]
@@ -118,11 +118,11 @@
       (.then (fn [story]
                (let [id (:id story)]
                  (hal/resource
-                  (merge (hal/story-links "hackernews" id
-                                          :external-url (not-empty (:url story))
-                                          :author (:by story))
-                         {:feed (hal/link "/feeds/hackernews")})
-                  {:id            id
+                   (merge (hal/story-links "hackernews" id
+                                           :external-url (not-empty (:url story))
+                                           :author (:by story))
+                          {:feed (hal/link "/hackernews")})
+                   {:id            id
                    :provider      "hackernews"
                    :title         (:title story)
                    :url           (:url story)
@@ -241,17 +241,13 @@
 ;; --- Assembled subrouter ---
 
 (def handler
-  (r/routes
-   (r/mount "/feeds/hackernews"
-     (r/routes
-       (r/route "/"       source-index-handler)
-       (r/route "/{feed}" feed-handler)))
-
-   (r/mount "/hackernews"
-     (r/routes
-       (r/route "/search"                    search-handler)
-       (r/route "/stories/{id}"              story-handler)
-       (r/route "/stories/{id}/comments"     comments-handler)
-       (r/route "/comments/{id}/replies"     comment-replies-handler)
-       (r/route "/users/{username}"          user-handler)
-       (r/route "/users/{username}/stories"  user-stories-handler)))))
+  (r/mount "/hackernews"
+    (r/routes
+      (r/route "/"                           source-index-handler)
+      (r/route "/feeds/{feed}"               feed-handler)
+      (r/route "/search"                     search-handler)
+      (r/route "/stories/{id}"               story-handler)
+      (r/route "/stories/{id}/comments"      comments-handler)
+      (r/route "/comments/{id}/replies"      comment-replies-handler)
+      (r/route "/users/{username}"           user-handler)
+      (r/route "/users/{username}/stories"   user-stories-handler))))

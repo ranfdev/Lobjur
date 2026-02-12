@@ -12,9 +12,7 @@
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
-   [api.router :as api]
    [api.helpers :refer [external-url provider-comments-url provider-user-url]]
-   [api.sources :as sources]
    [rollui.core :refer [build-ui derived-atom]]))
 
 (defn create-story-stack
@@ -111,18 +109,16 @@
     ([s] s)
     ([state [k payload :as action]]
      (-> (case k
-           :init
-            (let [sidebar-view (build-ui (home-stories))
-                  initial-source (first sources/sources)
-                  search-href (get-in initial-source [:extra-links :search])]
-              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
-              (show-sidebar-home!)
-              (-> state
-                  (assoc :sidebar-history [])
-                  (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
-                  (assoc :search-href search-href)
-                  (assoc :sidebar-header-start
-                        [Gtk/Button
+            :init
+             (let [sidebar-view (build-ui (home-stories))]
+               (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+               (show-sidebar-home!)
+               (-> state
+                   (assoc :sidebar-history [])
+                   (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
+                   (assoc :search-href nil)
+                   (assoc :sidebar-header-start
+                         [Gtk/Button
                          :icon-name "edit-find-symbolic"
                          :tooltip-text "Search"
                          :visible (derived-atom [state/state] :search-visible
@@ -138,12 +134,13 @@
                                                             (.append "Donate" "win.donate"))])))
 
             :reload
-            (let [sidebar-view (build-ui (home-stories))]
-              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
-              (show-sidebar-home!)
-              (-> state
-                  (assoc :sidebar-history [])
-                  (assoc :sidebar-page-title nil)))
+             (let [sidebar-view (build-ui (home-stories))]
+               (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+               (show-sidebar-home!)
+               (-> state
+                   (assoc :sidebar-history [])
+                   (assoc :search-href nil)
+                   (assoc :sidebar-page-title nil)))
 
            :select-story
             (let [url (external-url payload)

@@ -163,7 +163,7 @@
    Returns: Promise resolving to next page, or rejected promise if no next page
    
    Example:
-     (-> (router/GET '/feeds/lobsters?page=1')
+     (-> (router/GET '/lobsters/feeds/hot?page=1')
          (.then next-page)
          (.then #(hal-collection % :stories)))"
   [resource]
