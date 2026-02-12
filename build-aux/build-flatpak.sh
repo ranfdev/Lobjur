@@ -12,7 +12,9 @@ npx shadow-cljs compile app
 
 
 # Install the compiled app
-install -D build/app.js /app/bin/lobjur
+cp -r build/* /app/bin/
+mv /app/bin/app.js /app/bin/lobjur
+chmod +x /app/bin/lobjur
 
 # Install icons
 mkdir -p /app/share/
