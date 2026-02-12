@@ -69,8 +69,8 @@
                   (str/starts-with? path "http://"))
             (get-external path)
             (r/dispatch app request))))
-      (s/with-history debug/*history*)
-      (s/with-cache)))
+      (s/with-cache)
+      (s/with-history debug/*history*)))
 
 ;; --- Public API ---
 

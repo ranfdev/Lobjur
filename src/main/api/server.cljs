@@ -121,9 +121,34 @@
   (fn [request]
     (server (merge defaults request))))
 
+(defn- ->query-map
+  [query]
+  (let [query (cond
+                (nil? query) {}
+                (map? query) query
+                :else (js->clj query :keywordize-keys true))]
+    (if (map? query) query {})))
+
+(defn- normalize-cache-target
+  [request]
+  (let [raw-path (or (:path request) "/")
+        {:keys [path query-params]}
+        (try
+          (url/parse-url raw-path)
+          (catch :default _
+            {:path raw-path :query-params {}}))]
+    {:path path
+     :query (->> (merge (->query-map query-params)
+                        (->query-map (:query request)))
+                 (map (fn [[k v]]
+                        [(if (keyword? k) (name k) (str k)) v]))
+                 (sort-by first)
+                 vec)}))
+
 (defn- cache-key
   [request]
-  (select-keys request [:method :path :query :body]))
+  (let [{:keys [path query]} (normalize-cache-target request)]
+    [(:method request) path query (:body request)]))
 
 (defn- cache-bypass?
   [request]

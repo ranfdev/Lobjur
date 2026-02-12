@@ -1,6 +1,8 @@
 (ns test.api.server-test
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [api.server :as s]
+            [api.router :as router]
+            [api.debug :as debug]
             [api.rest :as r]))
 
 ;; Simple test handler
@@ -112,8 +114,73 @@
                      (is (= 2 @calls))
                      (done)))
             (.catch (fn [err]
+                       (is false (str "Unexpected error: " (.-message err)))
+                       (done))))))))
+
+(deftest test-with-cache-distinguishes-routes-and-query
+  (testing "with-cache keeps separate entries for exact route and query"
+    (let [calls (atom 0)
+          app (fn [request]
+                (swap! calls inc)
+                (js/Promise.resolve {:path (:path request)
+                                     :query (:query request)}))
+          srv (s/with-cache app)]
+      (async done
+        (-> (s/GET srv "in-process://api/feeds/lobsters/")
+            (.then (fn [root-res]
+                     (is (= "/feeds/lobsters" (:path root-res)))
+                     (s/GET srv "in-process://api/feeds/lobsters/hot/")))
+            (.then (fn [hot-res]
+                     (is (= "/feeds/lobsters/hot" (:path hot-res)))
+                     (s/GET srv "in-process://api/feeds/lobsters/hot/?page=1")))
+            (.then (fn [hot-page-res]
+                     (is (= "/feeds/lobsters/hot" (:path hot-page-res)))
+                     (is (= {:page "1"} (:query hot-page-res)))
+                     (is (= 3 @calls))
+                     ;; Re-fetch same routes: should now hit cache.
+                     (js/Promise.all #js[(s/GET srv "in-process://api/feeds/lobsters/")
+                                         (s/GET srv "in-process://api/feeds/lobsters/hot/")
+                                         (s/GET srv "in-process://api/feeds/lobsters/hot/?page=1")])))
+            (.then (fn [_]
+                     (is (= 3 @calls))
+                     (done)))
+            (.catch (fn [err]
                       (is false (str "Unexpected error: " (.-message err)))
                       (done))))))))
+
+(deftest test-with-cache-query-matching-uses-values
+  (testing "with-cache should match query params by value, not JS object identity"
+    (let [calls (atom 0)
+          app (fn [_request]
+                (swap! calls inc)
+                (js/Promise.resolve {:calls @calls}))
+          srv (s/with-cache app)
+          query #js {:page "1"}]
+      (async done
+        (-> (s/request srv {:method :GET :path "/items" :query query})
+            (.then (fn [_]
+                     (aset query "page" "2")
+                     (s/request srv {:method :GET :path "/items" :query query})))
+            (.then (fn [_]
+                     (is (= 2 @calls))
+                     (done)))
+            (.catch (fn [err]
+                       (is false (str "Unexpected error: " (.-message err)))
+                       (done))))))))
+
+(deftest test-router-debugger-path-records-cached-requests
+  (testing "router server should record repeated debugger requests even when cached"
+    (debug/clear-history!)
+    (async done
+      (-> (s/request router/server {:method :GET :path "/"})
+          (.then (fn [_]
+                   (s/request router/server {:method :GET :path "/"})))
+          (.then (fn [_]
+                   (is (= 2 (count @debug/*history*)))
+                   (done)))
+          (.catch (fn [err]
+                    (is false (str "Unexpected error: " (.-message err)))
+                    (done)))))))
 
 ;; Test ->server composition
 (deftest test-server-composition
