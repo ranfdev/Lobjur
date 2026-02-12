@@ -24,6 +24,22 @@
   <content_rating type="oars-1.0" />
 
   <releases>
+    <release version="1.4.0" date="2026-02-12">
+      <description>
+        <p>Major release with significant new features and improvements</p>
+        <ul>
+          <li>Added full HackerNews support with source dropdown and multiple feeds</li>
+          <li>Redesigned interface with sidebar navigation for better organization</li>
+          <li>Faster loading with on-demand content fetching</li>
+          <li>Improved comment display with collapsible threads and better navigation</li>
+          <li>Better pagination controls for easier browsing</li>
+          <li>Added mobile-friendly bottom navigation bar</li>
+          <li>Read articles directly in the app with integrated web view</li>
+          <li>Added context menus for copying links and opening content externally</li>
+          <li>Fixed various loading and display issues</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.3.0" date="2023-05-12">
       <description>
         <p>Changes</p>
