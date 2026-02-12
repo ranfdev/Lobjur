@@ -56,20 +56,44 @@
     (.pop_to_tag ^js (:content-nav-view @state/global-widgets) "content-root")
     (.set_show_content ^js (:split-view @state/global-widgets) true)
     ;; Set visible child based on initial-view parameter
-    (.set_visible_child_name ^js stack view-name)
-    (assoc state :selected-story-view stack)))
+     (.set_visible_child_name ^js stack view-name)
+     (assoc state :selected-story-view stack)))
 
+
+(defn show-sidebar-home! []
+  (.set_child ^js (:sidebar-pushed-content-bin @state/global-widgets) nil)
+  (.set_visible_child ^js (:sidebar-stack @state/global-widgets)
+                      ^js (:sidebar-home-toolbar @state/global-widgets)))
+
+(defn show-sidebar-page! [page]
+  (.set_child ^js (:sidebar-pushed-content-bin @state/global-widgets) page)
+  (.set_visible_child ^js (:sidebar-stack @state/global-widgets)
+                      ^js (:sidebar-pushed-toolbar @state/global-widgets)))
 
 (defn push-sidebar-page [state view title]
-  (let [page (Adw/NavigationPage.
-              #js {:child (build-ui
-                           [Adw/ToolbarView
-                            :.add_top_bar [Adw/HeaderBar]
-                            :content view])
-                   :title title})]
-    (.push ^js (:sidebar-nav-view @state/global-widgets) page)
+  (let [page (build-ui view)
+        history (conj (vec (:sidebar-history state))
+                      {:page page :title title})]
+    (show-sidebar-page! page)
     (.set_show_content ^js (:split-view @state/global-widgets) false)
-    state))
+    (-> state
+        (assoc :sidebar-history history)
+        (assoc :sidebar-page-title title))))
+
+(defn pop-sidebar-page [state]
+  (let [history (vec (:sidebar-history state))
+        prev-history (if (seq history) (pop history) history)]
+    (if-let [{:keys [page title]} (peek prev-history)]
+      (do
+        (show-sidebar-page! page)
+        (-> state
+            (assoc :sidebar-history prev-history)
+            (assoc :sidebar-page-title title)))
+      (do
+        (show-sidebar-home!)
+        (-> state
+            (assoc :sidebar-history [])
+            (assoc :sidebar-page-title nil))))))
 
 (defn push-content-page [state view title]
   (let [page (Adw/NavigationPage.
@@ -87,14 +111,16 @@
     ([state [k payload :as action]]
      (-> (case k
            :init
-           (let [sidebar-view (build-ui (home-stories))
-                 initial-source (first sources/sources)
-                 search-href (get-in initial-source [:extra-links :search])]
-             (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
-             (-> state
-                 (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
-                 (assoc :search-href search-href)
-                 (assoc :sidebar-header-start
+            (let [sidebar-view (build-ui (home-stories))
+                  initial-source (first sources/sources)
+                  search-href (get-in initial-source [:extra-links :search])]
+              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+              (show-sidebar-home!)
+              (-> state
+                  (assoc :sidebar-history [])
+                  (assoc :sidebar-header-title (:home-dropdown @state/global-widgets))
+                  (assoc :search-href search-href)
+                  (assoc :sidebar-header-start
                         [Gtk/Button
                          :icon-name "edit-find-symbolic"
                          :tooltip-text "Search"
@@ -109,10 +135,13 @@
                                                            (.append "About" "win.about")
                                                            (.append "Donate" "win.donate"))])))
 
-           :reload
-           (let [sidebar-view (build-ui (home-stories))]
-             (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
-             state)
+            :reload
+            (let [sidebar-view (build-ui (home-stories))]
+              (.set_child ^js (:sidebar-content-bin @state/global-widgets) sidebar-view)
+              (show-sidebar-home!)
+              (-> state
+                  (assoc :sidebar-history [])
+                  (assoc :sidebar-page-title nil)))
 
            :select-story
             (let [url (external-url payload)
@@ -185,9 +214,9 @@
                                  (.set_child results-bin
                                    (build-ui (stories-list-view
                                                (str "/hackernews/search?q=" q)))))))]
-             (push-sidebar-page state
-               [Gtk/Box
-                :orientation Gtk/Orientation.VERTICAL
+            (push-sidebar-page state
+                [Gtk/Box
+                 :orientation Gtk/Orientation.VERTICAL
                 :.append [Gtk/SearchEntry
                           :placeholder-text "Search Hacker News…"
                           :hexpand true
@@ -196,11 +225,14 @@
                           :margin-top 8
                           :$activate on-search]
                 :.append results-bin]
-               "Search"))
+                "Search"))
 
-           :pop-main-stack state)
+           :pop-sidebar-page
+           (pop-sidebar-page state)
 
-         (f action)))))
+            :pop-main-stack state)
+
+          (f action)))))
 (state/add-transducer app-transducer)
 
 (def app-css

@@ -50,18 +50,33 @@
     :title "Lobjur"
     :tag "sidebar"
     :child
-    [Adw/ToolbarView
-     :.add_top_bar (sidebar-header-bar)
-     :.add_bottom_bar [Adw/ViewSwitcherBar
-                       ::rollui/ref-in [global-widgets :sidebar-view-switcher-bar]
-                       :reveal true]
-     :content [Adw/NavigationView
-               ::rollui/ref-in [global-widgets :sidebar-nav-view]
-               :.add
-               [Adw/NavigationPage
-                :title "Home"
-                :tag "sidebar-home"
-                :child [Adw/Bin ::rollui/ref-in [global-widgets :sidebar-content-bin]]]]]]
+    [Gtk/Stack
+     ::rollui/ref-in [global-widgets :sidebar-stack]
+     :transition-type Gtk/StackTransitionType.CROSSFADE
+     :transition-duration 180
+     :.add_child
+     (list
+      [Adw/ToolbarView
+       ::rollui/ref-in [global-widgets :sidebar-home-toolbar]
+       :.add_top_bar (sidebar-header-bar)
+       :.add_bottom_bar [Adw/ViewSwitcherBar
+                         ::rollui/ref-in [global-widgets :sidebar-view-switcher-bar]
+                         :reveal true]
+       :content [Adw/Bin ::rollui/ref-in [global-widgets :sidebar-content-bin]]]
+      [Adw/ToolbarView
+       ::rollui/ref-in [global-widgets :sidebar-pushed-toolbar]
+       :.add_top_bar
+       [Adw/HeaderBar
+        :.pack_start [Gtk/Button
+                      :icon-name "go-previous-symbolic"
+                      :tooltip-text "Back"
+                      :$clicked #(state/send [:pop-sidebar-page])]
+        :title_widget [Adw/Bin
+                       :child (derived-atom [state/state]
+                                            :sidebar-page-title
+                                            #(when-let [title (:sidebar-page-title %)]
+                                               [Adw/WindowTitle :title title]))]]
+       :content [Adw/Bin ::rollui/ref-in [global-widgets :sidebar-pushed-content-bin]]])]]
    :content
    [Adw/NavigationPage
     :title " "
@@ -90,4 +105,3 @@
                          :icon-name "user-idle-symbolic"
                          :title "Select a story"
                          :description "Choose a story from the sidebar to read comments"]]]]]]])
-
