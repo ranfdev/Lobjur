@@ -149,26 +149,35 @@
         res :stories
         {:on-ready
          (fn [response]
-           [Adw/Bin
-            :height-request 48
-            :child
-            (-> (fetch-collection response :stories)
-                (.then
-                 (fn [stories]
-                   (if (> (count stories) 0)
-                     [Gtk/ListBox
-                      :activate-on-single-click true
-                      :.add_css_class "navigation-sidebar"
-                      :$row-activated (fn [_ row]
-                                        (when-let [s (aget row "story")]
-                                          (let [u (or (get s :url) (aget s "url"))]
-                                            (state/send [:select-story (assoc s :initial-view (if (not-empty u) :article :comments))]))))
-                      :.append
-                      (map lazy-story-widget stories)]
-                     [Adw/StatusPage
-                      :icon_name "mail-read-symbolic"
-                      :title
-                      "No Stories Available"]))))])})]
+            [Adw/Bin
+             :height-request 48
+             :child
+             (let [select-story! (fn [story]
+                                   (let [u (or (get story :url) (aget story "url"))]
+                                     (state/send [:select-story (assoc story :initial-view (if (not-empty u) :article :comments))])))]
+               (-> (fetch-collection response :stories)
+                 (.then
+                  (fn [stories]
+                    (if (> (count stories) 0)
+                      [Gtk/ListBox
+                       :activate-on-single-click true
+                       :.add_css_class "navigation-sidebar"
+                       :$row-activated (fn [_ row]
+                                         (when-let [s (aget row "story")]
+                                           (if (placeholder? s)
+                                              (if-let [self-href (hal-link s :self)]
+                                                (-> (api/GET self-href)
+                                                    (.then select-story!)
+                                                    (.catch (fn [err]
+                                                              (js/console.error "Failed to fetch placeholder story on click" self-href err))))
+                                                (select-story! s))
+                                              (select-story! s))))
+                       :.append
+                       (map lazy-story-widget stories)]
+                      [Adw/StatusPage
+                       :icon_name "mail-read-symbolic"
+                       :title
+                       "No Stories Available"])))))])})]
       :.append
       (pagination-controls
        {:prev-sensitive (derived-atom [res] :prev-story-page
