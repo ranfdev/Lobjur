@@ -26,8 +26,16 @@
    Returns a widget showing the web view with loading feedback and error recovery."
   [url]
   (let [webview (webview-widget)
-        spinner (build-ui [Adw/Spinner :spinning true])
-        error-page-ref (atom nil)
+        loading-active? (atom false)
+        loading-bar (doto (Gtk/ProgressBar.)
+                      (.set_show_text false)
+                      (.set_hexpand true)
+                      (.set_halign Gtk/Align.FILL)
+                      (.set_valign Gtk/Align.START)
+                      (.set_visible false)
+                      (.set_can_target false)
+                      (.set_size_request -1 2))
+        stack (Gtk/Stack.)
         error-page (build-ui
                     [Adw/StatusPage
                      :icon-name "dialog-error-symbolic"
@@ -39,36 +47,53 @@
                              :.add_css_class "pill"
                              :.add_css_class "suggested-action"
                              :$clicked (fn [_]
-                                        (.set_visible ^js @error-page-ref false)
-                                        (.set_visible spinner true)
-                                        (load-url webview url))]])
-        _ (reset! error-page-ref error-page)
-        stack (Gtk/Stack.)
+                                         (.set_visible_child_name stack "content")
+                                         (doto ^js loading-bar
+                                           (.set_fraction 0.0)
+                                           (.set_visible true))
+                                         (load-url webview url))]])
         overlay (build-ui
                  [Gtk/Overlay
-                  :child stack
-                  :.add_overlay
-                  [Gtk/Box
-                   :halign Gtk/Align.CENTER
-                   :valign Gtk/Align.CENTER
-                   :css_classes #js ["toolbar"]
-                   :.append spinner]])]
+                   :child stack
+                   :.add_overlay loading-bar])]
     
     ;; Add webview and error page to stack
     (.add_named stack webview "content")
     (.add_named stack error-page "error")
     (.set_visible_child_name stack "content")
     
-    ;; Hide spinner when page loads
+    ;; Update loading indicator
+    (.connect ^js webview "notify::estimated-load-progress"
+              (fn [_ _]
+                (when @loading-active?
+                  (let [progress (.get_estimated_load_progress ^js webview)
+                        fraction (-> progress (max 0.0) (min 1.0))]
+                    (.set_fraction ^js loading-bar fraction)
+                    (when (< fraction 1.0)
+                      (.set_visible ^js loading-bar true))))))
+
     (.connect ^js webview "load-changed"
               (fn [_ load-event]
-                (when (= load-event WebKit/LoadEvent.FINISHED)
-                  (.set_visible ^js spinner false))))
+                (case load-event
+                  WebKit/LoadEvent.STARTED
+                  (do
+                    (reset! loading-active? true)
+                    (doto ^js loading-bar
+                      (.set_fraction 0.0)
+                      (.set_visible true)))
+                  WebKit/LoadEvent.FINISHED
+                  (do
+                    (reset! loading-active? false)
+                    (doto ^js loading-bar
+                      (.set_fraction 1.0)
+                      (.set_visible false)))
+                  nil)))
     
     ;; Show error page if load fails
     (.connect ^js webview "load-failed"
               (fn [_ load-event error uri]
-                (.set_visible ^js spinner false)
+                (reset! loading-active? false)
+                (.set_visible ^js loading-bar false)
                 (.set_visible_child_name stack "error")
                 true)) ;; Return true to stop error propagation
     
