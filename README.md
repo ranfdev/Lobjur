@@ -1,21 +1,23 @@
 # Lobjur
 
-This a native https://lobste.rs client written using GTK4, libadwaita and ClojureScript (gjs runtime, custom target). 
+A native GNOME client for Lobsters and Hacker News, built with GTK4, libadwaita and ClojureScript (GJS runtime). 
 
 <a href='https://flathub.org/apps/details/com.ranfdev.Lobjur'><img width='240' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.png'/></a>
 
 ## Screenshot
-![Home page screenshot](https://user-images.githubusercontent.com/23294184/188264118-76c8df44-10a4-4894-902e-66a006037d7f.png)
+![Home page screenshot](https://github.com/ranfdev/Lobjur/blob/master/data/screenshots/1.png?raw=true)
 
 
 
 
 
 ## Features
-- Browse hottest and active stories
-- Browse the comments of each story
-- Browse stories by tag
-- Lookup user info
+
+- Browse multiple sources (Lobsters and Hacker News) and choose feeds
+- Collapsible threaded comments
+- Read articles in-app with an integrated web view
+- Sidebar navigation and mobile-friendly controls
+- On-demand loading and pagination
 
 ## Development
 

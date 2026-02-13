@@ -312,7 +312,7 @@
               :application-icon "com.ranfdev.Lobjur"
               :authors #js ["ranfdev https://ranfdev.com/about"]
               :version "1.3.0"
-              :comments "A simple https://lobste.rs client"
+              :comments "Native GNOME client for Lobsters and Hacker News"
               :license-type Gtk/License.GPL_3_0
               :website-label "Source"
               :website "https://github.com/ranfdev/Lobjur"])))

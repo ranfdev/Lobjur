@@ -5,9 +5,9 @@
   <metadata_license>CC0</metadata_license>
   <project_license>GPL-3.0+</project_license>
   <name>Lobjur</name>
-  <summary>A simple lobste.rs client</summary>
+  <summary>Native GNOME client for Lobsters and Hacker News</summary>
   <description>
-    <p>Simple client for lobste.rs online community. From the website: "Lobsters is a computing-focused community centered around link aggregation and discussion, launched on July 3rd, 2012".</p>
+    <p>Native GNOME client for Lobsters and Hacker News, featuring multiple feeds, collapsible comments, and an integrated web view.</p>
   </description>
 
   <screenshots>

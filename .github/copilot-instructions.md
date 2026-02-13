@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Lobjur is a native Lobsters (https://lobste.rs) client built with:
+Lobjur is a native Lobsters and Hacker News client built with:
 - **ClojureScript** compiled to JavaScript for the GNOME JavaScript (GJS) runtime
 - **GTK4** and **libadwaita** for the UI
 - **shadow-cljs** with a custom GJS target for compilation

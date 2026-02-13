@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Lobjur
-Comment=A simple lobste.rs client
+Comment=Native GNOME client for Lobsters and Hacker News
 Type=Application
 Exec=lobjur
 Terminal=false
