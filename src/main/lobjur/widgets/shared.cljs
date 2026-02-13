@@ -1,7 +1,9 @@
 (ns lobjur.widgets.shared
   (:require
    ["gjs.gi.Gtk" :as Gtk]
-   ["gjs.gi.Adw" :as Adw]))
+   ["gjs.gi.Adw" :as Adw]
+   [clojure.string :as str]
+   [lobjur.state :as state]))
 
 (defn upvote-btn [score]
   [Gtk/Box
@@ -82,17 +84,20 @@
                    (let [url (js/URL. href)]
                      (.-protocol url))
                    (catch :default _
-                     nil))]
+                     nil))
+          safe-http-link? (or (str/starts-with? (str/lower-case href) "http://")
+                              (str/starts-with? (str/lower-case href) "https://"))]
       (cond
         ;; Safe schemes: open directly
-        (or (= scheme "https:")
+        (or safe-http-link?
+            (= scheme "https:")
             (= scheme "http:"))
         (do (Gtk/show_uri nil href 0) true)
 
         ;; Unsafe/unknown schemes: show warning dialog
         :else
-        (let [window (some-> (js/globalThis.application)
-                             (.-active_window))
+        (let [window (or (:main-window @state/global-widgets)
+                         (some-> (Gtk/Application.get_default) (.get_active_window)))
               dialog (Adw/AlertDialog.
                       #js {:heading "Suspicious Link"
                            :body (str "This link uses a potentially dangerous scheme:\n\n" href "\n\nOpening it may be unsafe.")
