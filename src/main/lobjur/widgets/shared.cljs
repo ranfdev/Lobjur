@@ -1,8 +1,7 @@
 (ns lobjur.widgets.shared
   (:require
    ["gjs.gi.Gtk" :as Gtk]
-   [api.url :as api-url]
-   [lobjur.state :as state]))
+   ["gjs.gi.Adw" :as Adw]))
 
 (defn upvote-btn [score]
   [Gtk/Box
@@ -79,22 +78,34 @@
 
 (defn html-link-activate [href]
   (when (seq href)
-    (let [{:keys [scheme path]} (api-url/parse-url href)
-          normalized (api-url/normalize-url href)]
+    (let [scheme (try
+                   (let [url (js/URL. href)]
+                     (.-protocol url))
+                   (catch :default _
+                     nil))]
       (cond
-        (#{:https :http} scheme)
+        ;; Safe schemes: open directly
+        (or (= scheme "https:")
+            (= scheme "http:"))
         (do (Gtk/show_uri nil href 0) true)
 
+        ;; Unsafe/unknown schemes: show warning dialog
         :else
-        (if-let [[_ _provider username suffix]
-                 (re-matches #"^/(lobsters|hackernews)/users/([^/]+)(/stories)?$" path)]
-          (do
-            (if suffix
-              (state/send [:push-user-stories {:href normalized
-                                               :title (str username "'s Stories")}])
-              (state/send [:push-user {:href normalized
-                                       :title username}]))
-            true)
-          (do
-            (state/send [:push-user-stories {:href normalized :title "Linked Page"}])
-            true))))))
+        (let [window (some-> (js/globalThis.application)
+                             (.-active_window))
+              dialog (Adw/AlertDialog.
+                      #js {:heading "Suspicious Link"
+                           :body (str "This link uses a potentially dangerous scheme:\n\n" href "\n\nOpening it may be unsafe.")
+                           :close_response "cancel"})]
+          (.add_response dialog "cancel" "Cancel")
+          (.add_response dialog "open" "Open Anyway")
+          (.set_response_appearance dialog "open" Adw/ResponseAppearance.DESTRUCTIVE)
+          (.choose dialog window nil
+                   (fn [_ result]
+                     (try
+                       (let [response (.choose_finish dialog result)]
+                         (when (= response "open")
+                           (Gtk/show_uri nil href 0)))
+                       (catch :default e
+                         (js/console.error "Error in alert dialog:" e)))))
+          true)))))
