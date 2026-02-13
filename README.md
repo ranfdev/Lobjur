@@ -39,6 +39,12 @@ The following will actually run the app. The app is able to connect to the compi
 gjs build/app.js
 ```
 
+Run the Html2Gtk widgets demo script:
+
+```sh
+npm run demo:html2gtk
+```
+
 Once the app is running, you can also inspect its internal state with a REPL, using your favorite editor integration or running
 
 ```sh

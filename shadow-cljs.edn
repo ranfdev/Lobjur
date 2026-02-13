@@ -5,6 +5,10 @@
         :output-dir "./build/jslibs"
         :output-to "./build/app.js"
         :main lobjur.main/main}
+  :html2gtk-demo {:target shadow-cljs-gjs-target.core
+                  :output-dir "./build/html2gtk-demo-jslibs"
+                  :output-to "./build/html2gtk-demo.js"
+                  :main lobjur.html2gtk-demo/main}
   :test {:target shadow-cljs-gjs-target.core
          :output-dir "./build/test-jslibs"
          :output-to "./build/test.js"

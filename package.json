@@ -8,6 +8,7 @@
   "scripts": {
     "start": "shadow-cljs watch app",
     "test": "shadow-cljs compile test && gjs build/test.js",
-    "test:watch": "shadow-cljs watch test"
+    "test:watch": "shadow-cljs watch test",
+    "demo:html2gtk": "shadow-cljs compile html2gtk-demo && gjs build/html2gtk-demo.js"
   }
 }
