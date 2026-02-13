@@ -39,8 +39,6 @@
                (.append "Copy Text" "comment.copy-text")
                (.append "View Author" "comment.view-author"))]
     [Gtk/Box
-     :$map (fn [widget]
-             (.insert_action_group ^js widget "comment" action-group))
      :.add_css_class "comment"
      :.add_css_class (str "comment-depth-" (mod depth 6))
      :orientation Gtk/Orientation.VERTICAL
@@ -66,9 +64,11 @@
          chip-widget
          :.append
          [Gtk/MenuButton
-        :icon-name "view-more-symbolic"
-        :tooltip-text "Comment options"
-        :css_classes #js ["flat" "small" "comment-revealer-btn"]
+         :$map (fn [widget]
+                 (.insert_action_group ^js widget "comment" action-group))
+         :icon-name "view-more-symbolic"
+         :tooltip-text "Comment options"
+         :css_classes #js ["flat" "small" "comment-revealer-btn"]
         :valign Gtk/Align.CENTER
         :menu-model menu]]
 
