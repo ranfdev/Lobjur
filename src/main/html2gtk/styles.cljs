@@ -13,6 +13,9 @@
       background: alpha(@theme_fg_color, 0.08);
       border-radius: 6px;
       padding: 6px;
+      margin: 0;
+   }
+   .html-pre-scroller {
       margin: 4px 0;
    }
    .html-pre-text, .html-inline-code {

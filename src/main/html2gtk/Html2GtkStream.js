@@ -151,10 +151,18 @@ export class Html2GtkStream {
             }
             case 'pre': {
                 this._flushTextRuns();
+                const preScroller = new Gtk.ScrolledWindow({
+                    hexpand: true,
+                    hscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
+                    vscrollbar_policy: Gtk.PolicyType.NEVER
+                });
+                preScroller.add_css_class('html-pre-scroller');
                 const preBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 2, hexpand: true });
                 preBox.add_css_class('html-pre');
                 this._applyGlobalAttributes(preBox, attributes);
-                const containerEntry = this._pushContainer(tagName, preBox);
+                preScroller.set_child(preBox);
+                this._appendToCurrent(preScroller);
+                const containerEntry = this._pushContainer(tagName, preBox, false);
                 const inlineEntry = this._pushInline(tagName, attributes);
                 return this._makeTagEntry(tagName, () => {
                     inlineEntry.close();
