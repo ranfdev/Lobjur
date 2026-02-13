@@ -12,6 +12,7 @@
    [lobjur.widgets.stories-list-view :refer [home-stories stories-list-view]]
    [lobjur.widgets.user :as user]
    [lobjur.widgets.window :refer [window-content]]
+   [html2gtk.styles :as h2g-styles]
    [api.helpers :refer [external-url provider-comments-url provider-user-url]]
    [rollui.core :refer [build-ui derived-atom]]))
 
@@ -235,7 +236,7 @@
 (state/add-transducer app-transducer)
 
 (def app-css
-  ".small.button {
+  (str ".small.button {
       padding: 0px 8px;
    }
    .comment-revealer-btn {
@@ -262,56 +263,22 @@
    .comment-depth-3 { border-left-color: @orange_3; }
    .comment-depth-4 { border-left-color: @red_3; }
    .comment-depth-5 { border-left-color: @purple_3; }
-   .html-paragraph {
-      margin-bottom: 4px;
-   }
-   .html-blockquote {
-      border-left: 3px solid alpha(@theme_fg_color, 0.3);
-      padding-left: 8px;
-      margin: 4px 0;
-   }
-   .html-pre {
-      background: alpha(@theme_fg_color, 0.08);
-      border-radius: 6px;
-      padding: 6px;
-      margin: 4px 0;
-   }
-   .html-pre-text, .html-inline-code {
-      font-family: monospace;
-   }
-   .html-inline-code {
-      background: alpha(@theme_fg_color, 0.08);
-      border-radius: 4px;
-      padding: 0 4px;
-   }
-   .html-strong {
-      font-weight: 700;
-   }
-   .html-emphasis {
-      font-style: italic;
-   }
-   .html-underline {
-      text-decoration: underline;
-   }
-   .html-strikethrough {
-      text-decoration: line-through;
-   }
-   .html-list-item {
-      margin: 1px 0;
-   }
+   "
+       h2g-styles/html2gtk-css
+       "
    .tag {
-       min-height: 16px;
-       min-width: 16px;
+        min-height: 16px;
+        min-width: 16px;
       background: alpha(@yellow_2, 0.15);
       padding: 2px 4px;
       color: @theme_fg_color;
       border-radius: 8px;
       box-shadow: 0px 0px 0px 1px inset alpha(@yellow_4, 0.2);
   }
-  .tag:hover {
-      background: alpha(@yellow_4, 0.2);
-  }
-  ")
+   .tag:hover {
+       background: alpha(@yellow_4, 0.2);
+   }
+  "))
 
 (defn about []
   (.present (build-ui

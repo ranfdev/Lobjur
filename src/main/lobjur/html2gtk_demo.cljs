@@ -1,7 +1,9 @@
 (ns lobjur.html2gtk-demo
   (:require ["gjs.gi.Adw" :as Adw]
+            ["gjs.gi.Gdk" :as Gdk]
             ["gjs.gi.Gtk" :as Gtk]
-            [html2gtk.core :as h2g]))
+            [html2gtk.core :as h2g]
+            [html2gtk.styles :as h2g-styles]))
 
 (def demo-html
   "<main>
@@ -39,14 +41,23 @@
 
 (defn activate [app]
   (let [content (h2g/render-html-widget demo-html)
-        scroller (Gtk/ScrolledWindow. #js {:vexpand true
-                                           :hexpand true
-                                           :child content})
-        win (Adw/ApplicationWindow. #js {:application app
-                                         :title "Html2Gtk Demo"
-                                         :default_width 840
-                                         :default_height 640
-                                         :content scroller})]
+         _ (.add_css_class ^js content "demo-html-root")
+         scroller (Gtk/ScrolledWindow. #js {:vexpand true
+                                            :hexpand true
+                                            :child content})
+         headerbar (Adw/HeaderBar. #js {:title_widget (Gtk/Label. #js {:label "Html2Gtk Demo"})})
+         toolbar-view (doto (Adw/ToolbarView. #js {:content scroller})
+                        (.add_top_bar headerbar))
+         win (Adw/ApplicationWindow. #js {:application app
+                                          :title "Html2Gtk Demo"
+                                          :default_width 840
+                                          :default_height 640
+                                          :content toolbar-view})]
+     (.add_css_class ^js win "demo-html2gtk-window")
+     (Gtk/StyleContext.add_provider_for_display
+      (Gdk/Display.get_default)
+     (doto (new Gtk/CssProvider) (.load_from_data h2g-styles/demo-css -1))
+      600)
     (.present win)))
 
 (defn ^:export main [& _args]
