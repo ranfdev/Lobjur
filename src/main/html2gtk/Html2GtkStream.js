@@ -147,7 +147,7 @@ export class Html2GtkStream {
                 row.append(markerLabel);
                 row.append(itemContent);
                 this._appendToCurrent(row);
-                return this._pushContainer(tagName, itemContent);
+                return this._pushContainer(tagName, itemContent, false);
             }
             case 'pre': {
                 this._flushTextRuns();
@@ -211,9 +211,11 @@ export class Html2GtkStream {
         }
     }
 
-    _pushContainer(tagName, widget) {
+    _pushContainer(tagName, widget, shouldAppend = true) {
         const parent = this.currentContainer;
-        this._appendToCurrent(widget);
+        if (shouldAppend) {
+            this._appendToCurrent(widget);
+        }
         this.currentContainer = widget;
         this.lastTextEndedWithWhitespace = true;
         return this._makeTagEntry(tagName, () => {
