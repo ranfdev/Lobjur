@@ -213,11 +213,12 @@
                       source (nth @loaded-sources idx nil)]
                   (when source
                     (let [new-stack (build-view-stack source)]
-                      (.set_child content-bin new-stack)
-                      (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                        (.set_stack ^js bar new-stack))
-                      (swap! state/state assoc :search-href
-                             (get-in source [:extra-links :search])))))))
+                       (.set_child content-bin new-stack)
+                       (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                         (.set_stack ^js bar new-stack))
+                       (swap! state/state assoc
+                              :search-href (get-in source [:extra-links :search])
+                              :selected-source-id (:id source)))))))
     (-> (api/GET "/")
         (.then #(fetch-collection % :sources {:default []}))
         (.then (fn [sources]
@@ -227,19 +228,20 @@
                    (.set_model ^js dropdown (Gtk/StringList. #js {:strings source-names}))
                    (when-let [initial-source (first sources)]
                      (let [initial-stack (build-view-stack initial-source)]
-                       (.set_child content-bin initial-stack)
-                       (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
-                         (.set_stack ^js bar initial-stack))
-                       (.set_selected ^js dropdown 0)
-                       (swap! state/state assoc :search-href
-                              (get-in initial-source [:extra-links :search])))))))
-        (.catch (fn [err]
-                  (.set_child ^js content-bin
-                              (build-ui [Adw/StatusPage
-                                         :icon_name "dialog-error-symbolic"
-                                         :title "Failed to load sources"
-                                         :description (str err)]))
-                  (swap! state/state assoc :search-href nil))))
+                        (.set_child content-bin initial-stack)
+                        (when-let [bar (:sidebar-view-switcher-bar @state/global-widgets)]
+                          (.set_stack ^js bar initial-stack))
+                        (.set_selected ^js dropdown 0)
+                        (swap! state/state assoc
+                               :search-href (get-in initial-source [:extra-links :search])
+                               :selected-source-id (:id initial-source)))))))
+         (.catch (fn [err]
+                   (.set_child ^js content-bin
+                               (build-ui [Adw/StatusPage
+                                          :icon_name "dialog-error-symbolic"
+                                          :title "Failed to load sources"
+                                          :description (str err)]))
+                   (swap! state/state assoc :search-href nil :selected-source-id nil))))
     (swap! state/global-widgets assoc
             :home-dropdown dropdown)
     [Gtk/Box

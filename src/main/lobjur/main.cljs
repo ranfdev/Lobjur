@@ -235,10 +235,26 @@
           (f action)))))
 (state/add-transducer app-transducer)
 
+(def source-accent-classes ["source-lobsters" "source-hackernews"])
+
+(defn source-accent-class [source-id]
+  (let [sid (some-> source-id str/lower-case)]
+    (cond
+      (and sid (str/includes? sid "lobster")) "source-lobsters"
+      (and sid (str/includes? sid "hacker")) "source-hackernews"
+      :else nil)))
+
+(defn apply-source-accent! [source-id]
+  (when-let [win (:main-window @state/global-widgets)]
+    (doseq [class source-accent-classes]
+      (.remove_css_class ^js win class))
+    (when-let [class (source-accent-class source-id)]
+      (.add_css_class ^js win class))))
+
 (def app-css
   (str ".small.button {
-      padding: 0px 8px;
-   }
+       padding: 0px 8px;
+    }
    .comment-revealer-btn {
       padding: 2px 2px;
       min-height: 16px;
@@ -276,9 +292,15 @@
       box-shadow: 0px 0px 0px 1px inset alpha(@yellow_4, 0.2);
   }
    .tag:hover {
-       background: alpha(@yellow_4, 0.2);
-   }
-  "))
+        background: alpha(@yellow_4, 0.2);
+    }
+    .source-lobsters {
+      border-top: 2px solid alpha(@red_3, 0.45);
+    }
+    .source-hackernews {
+      border-top: 2px solid alpha(@orange_3, 0.45);
+    }
+    "))
 
 (defn about []
   (.present (build-ui
@@ -297,15 +319,22 @@
 
 (defn activate [app]
   (let [win (Adw/ApplicationWindow.
-             #js
-              {:application app
+              #js
+               {:application app
                :default_width 900
-               :default_height 720
-               :content
-               (build-ui (window-content))})]
+                :default_height 720
+                :content
+                (build-ui (window-content))})]
+    (swap! state/global-widgets assoc :main-window win)
+    (remove-watch state/state ::window-source-accent)
+    (add-watch state/state ::window-source-accent
+               (fn [_ _ old-state new-state]
+                 (when (not= (:selected-source-id old-state) (:selected-source-id new-state))
+                   (apply-source-accent! (:selected-source-id new-state)))))
+    (apply-source-accent! (:selected-source-id @state/state))
     ;; Add breakpoint: collapse split-view on narrow windows
     (let [bp (Adw/Breakpoint.new
-               (Adw/BreakpointCondition.new_length
+                (Adw/BreakpointCondition.new_length
                  Adw/BreakpointConditionLengthType.MAX_WIDTH
                  720.0
                  Adw/LengthUnit.SP))
