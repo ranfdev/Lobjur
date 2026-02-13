@@ -21,13 +21,14 @@ A native GNOME client for Lobsters and Hacker News, built with GTK4, libadwaita 
 
 ## Development
 
-ClojureScript requires a decent amount of dependencies for compilation; they are listed in the file `flake.nix`.
-
-Provided you have the [nix package manager](https://nixos.org/download.html) installed, with flakes enabled, you can enter inside a shell environment with all the required dependencies, by doing
+This project is built to be compiled and packaged using Flatpak. To build locally with flatpak-builder run:
 
 ```sh
-nix develop
+flatpak-builder --force-clean build-dir com.ranfdev.Lobjur.json
 ```
+
+Alternatively install directly from Flathub: https://flathub.org/apps/details/com.ranfdev.Lobjur
+
 
 The following will continuosly watch for file changes and will recompile the changed files to JavaScript.
 
