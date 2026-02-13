@@ -6,6 +6,7 @@
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
+   [html2gtk.core :as h2g]
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
@@ -19,6 +20,15 @@
   (let [replies (or (get-in comment [:_embedded :replies]) [])]
     (+ (count replies) (reduce + 0 (map count-descendants replies)))))
 
+(defn- mount-html-widget! [bin html]
+  (let [current-child (.get_child ^js bin)
+        mounted-html (aget ^js bin "__lobjur_mounted_html")]
+    (when (or (nil? current-child) (not= mounted-html html))
+      (aset ^js bin "__lobjur_mounted_html" html)
+      (when current-child
+        (.set_child ^js bin nil))
+      (.set_child ^js bin (h2g/render-html-widget html)))))
+
 (defn- comment-content-widget [comment depth {:keys [icon-name tooltip-text toggle! chip-widget has-linked-replies?]}]
   (let [{:keys [text author]} comment
         author-href (hal-link comment :author)
@@ -28,7 +38,7 @@
                           (.connect "activate"
                             (fn [_ _]
                               (let [clipboard (.get_clipboard (Gdk/Display.get_default))]
-                                (.set ^js clipboard text))))))
+                                (.set ^js clipboard (or (html->text text) "")))))))
                        (.add_action
                         (doto (Gio/SimpleAction. #js {:name "view-author"})
                           (.connect "activate"
@@ -71,15 +81,12 @@
         :valign Gtk/Align.CENTER
         :menu-model menu]]
 
-      [Gtk/Label
-       :label text
-       :selectable false
-       :wrap true
-       :wrap-mode Pango/WrapMode.WORD_CHAR
-       :margin-start 8
-       :margin-end 8
-       :margin-bottom 8
-       :xalign 0.0])]))
+        [Adw/Bin
+         :hexpand true
+         :margin-start 8
+         :margin-end 8
+         :margin-bottom 8
+         :$map (fn [bin] (mount-html-widget! bin text))])]))
 
 (declare comment-tree-widget)
 
@@ -159,10 +166,8 @@
         ;; Fetch story text for self-posts (no external URL)
         story-text-res (when (and (not (not-empty url)) self-href)
                          (r/resource #(-> (api/GET self-href)
-                                          (.then (fn [full-story]
-                                                   (some-> (:text full-story)
-                                                           not-empty
-                                                           html->text))))))
+                                           (.then (fn [full-story]
+                                                   (some-> (:text full-story) not-empty))))))
         res (r/resource #(api/GET comments-href))]
     [Gtk/ScrolledWindow
      :hexpand true
@@ -218,19 +223,16 @@
           :child
           (rv/resource-widget
            story-text-res :story-text
-           {:on-ready
-            (fn [text]
-              (if text
-                [Gtk/Label
-                 :label text
-                 :wrap true
-                 :wrap-mode Pango/WrapMode.WORD_CHAR
-                 :selectable true
-                 :xalign 0.0
-                 :margin-start 8
-                 :margin-end 8]
-                [Gtk/Box]))
-            :on-loading (fn [_] [Gtk/Box])})])
+            {:on-ready
+             (fn [text]
+                (if text
+                  [Adw/Bin
+                   :hexpand true
+                   :margin-start 8
+                   :margin-end 8
+                   :$map (fn [bin] (mount-html-widget! bin text))]
+                  [Gtk/Box]))
+             :on-loading (fn [_] [Gtk/Box])})])
        :.append
        [Adw/Bin
         :child

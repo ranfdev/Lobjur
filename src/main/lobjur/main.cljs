@@ -258,13 +258,50 @@
    }
   .comment-depth-0 { border-left-color: @blue_3; }
   .comment-depth-1 { border-left-color: @green_3; }
-  .comment-depth-2 { border-left-color: @yellow_3; }
-  .comment-depth-3 { border-left-color: @orange_3; }
-  .comment-depth-4 { border-left-color: @red_3; }
-  .comment-depth-5 { border-left-color: @purple_3; }
-  .tag {
-      min-height: 16px;
-      min-width: 16px;
+   .comment-depth-2 { border-left-color: @yellow_3; }
+   .comment-depth-3 { border-left-color: @orange_3; }
+   .comment-depth-4 { border-left-color: @red_3; }
+   .comment-depth-5 { border-left-color: @purple_3; }
+   .html-paragraph {
+      margin-bottom: 4px;
+   }
+   .html-blockquote {
+      border-left: 3px solid alpha(@theme_fg_color, 0.3);
+      padding-left: 8px;
+      margin: 4px 0;
+   }
+   .html-pre {
+      background: alpha(@theme_fg_color, 0.08);
+      border-radius: 6px;
+      padding: 6px;
+      margin: 4px 0;
+   }
+   .html-pre-text, .html-inline-code {
+      font-family: monospace;
+   }
+   .html-inline-code {
+      background: alpha(@theme_fg_color, 0.08);
+      border-radius: 4px;
+      padding: 0 4px;
+   }
+   .html-strong {
+      font-weight: 700;
+   }
+   .html-emphasis {
+      font-style: italic;
+   }
+   .html-underline {
+      text-decoration: underline;
+   }
+   .html-strikethrough {
+      text-decoration: line-through;
+   }
+   .html-list-item {
+      margin: 1px 0;
+   }
+   .tag {
+       min-height: 16px;
+       min-width: 16px;
       background: alpha(@yellow_2, 0.15);
       padding: 2px 4px;
       color: @theme_fg_color;

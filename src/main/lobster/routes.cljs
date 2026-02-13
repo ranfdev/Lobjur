@@ -3,8 +3,7 @@
    ["gjs.gi.GLib" :as GLib]
    [api.rest :as r]
    [api.hal :as hal]
-   [lobster.core :as lobster]
-   [lobjur.utils.common :refer [html->text]]))
+   [lobster.core :as lobster]))
 
 ;; --- Normalizers (moved from lobster/adapter.cljs) ---
 
@@ -52,10 +51,10 @@
   "Normalize a Lobsters comment to HAL format."
   [comment]
   (let [id (:short_id comment)]
-    {:id         id
-     :provider   "lobsters"
-     :text       (html->text (:comment comment))
-     :created_at (:created_at comment)
+     {:id         id
+      :provider   "lobsters"
+      :text       (:comment comment)
+      :created_at (:created_at comment)
      :author     (:commenting_user comment)
      :score      (:score comment)
      :_links     (hal/comment-links "lobsters" id

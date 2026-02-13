@@ -43,7 +43,7 @@
         kids (:kids comment)]
     {:id         id
      :provider   "hackernews"
-     :text       (html->text (:text comment))
+     :text       (:text comment)
      :created_at (when (:time comment)
                    (-> (js/Date. (* (:time comment) 1000))
                        (.toISOString)))

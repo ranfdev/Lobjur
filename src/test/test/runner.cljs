@@ -3,18 +3,20 @@
   (:require [cljs.test :refer-macros [run-tests]]
             [test.api.helpers-test]
             [test.api.hal-test]
-            [test.api.server-test]))
+            [test.api.server-test]
+            [test.html2gtk.text2html-stream-test]))
 
 (defn main []
   ;; Enable console output for test results
   (enable-console-print!)
-  
+
   ;; Run all tests
   (println "\n=== Running Tests ===")
   (run-tests 'test.api.helpers-test
              'test.api.hal-test
-             'test.api.server-test)
-  
+             'test.api.server-test
+             'test.html2gtk.text2html-stream-test)
+
   ;; Give async tests time to complete before exiting
   ;; In a real scenario, you'd want to track test completion more carefully
   (js/setTimeout
