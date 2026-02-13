@@ -34,14 +34,13 @@
    (list
     [Gtk/Label
      :label label
-     :yalign 0.0
      :xalign 0.0
      :css_classes #js ["heading"]]
     (if href
       [Gtk/Button
        :label (str value)
        :halign Gtk/Align.START
-       :css_classes #js ["flat" "link"]
+       :css_classes #js ["button" "flat" "small"]
        :$clicked #(state/send [:push-user {:href href :title value}])]
       [Gtk/Label
        :label (str value)
