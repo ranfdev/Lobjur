@@ -1,9 +1,11 @@
 (ns test.api.server-test
   (:require [cljs.test :refer-macros [deftest is testing async]]
+            [clojure.string :as str]
             [api.server :as s]
             [api.router :as router]
             [api.debug :as debug]
-            [api.rest :as r]))
+            [api.rest :as r]
+            [hackernews.core :as hn]))
 
 ;; Simple test handler
 (def test-app
@@ -55,8 +57,61 @@
                           (get-in lobsters [:_links :self :href])))
                    (done)))
           (.catch (fn [err]
-                    (is false (str "Unexpected error: " (.-message err)))
-                    (done)))))))
+                     (is false (str "Unexpected error: " (.-message err)))
+                     (done)))))))
+
+(deftest test-hackernews-story-endpoint-preserves-story-shape
+  (testing "HN story endpoint returns typed story payload for story item"
+    (let [orig-item hn/item]
+      (set! hn/item
+            (fn [_]
+              (js/Promise.resolve
+               {:id 123
+                :type "story"
+                :title "A story"
+                :url "https://example.com"
+                :score 12
+                :descendants 7
+                :time 1700000000
+                :by "alice"})))
+      (async done
+        (-> (r/dispatch router/app {:method :GET :path "/hackernews/stories/123"})
+            (.then (fn [res]
+                     (is (= "story" (:item_type res)))
+                     (is (= "A story" (:title res)))
+                     (is (= 7 (:comment_count res)))
+                     (is (= "https://example.com" (:url res)))))
+            (.catch (fn [err]
+                      (is false (str "Unexpected error: " (.-message err)))))
+            (.finally (fn []
+                        (set! hn/item orig-item)
+                        (done))))))))
+
+(deftest test-hackernews-story-endpoint-normalizes-comment-item
+  (testing "HN story endpoint returns generated title and safe defaults for comment item"
+    (let [orig-item hn/item]
+      (set! hn/item
+            (fn [_]
+              (js/Promise.resolve
+               {:id 456
+                :type "comment"
+                :text "<p>Hello world. second sentence</p>"
+                :time 1700000000
+                :by "bob"})))
+      (async done
+        (-> (r/dispatch router/app {:method :GET :path "/hackernews/stories/456"})
+            (.then (fn [res]
+                     (is (= "comment" (:item_type res)))
+                     (is (str/starts-with? (:title res) "Comment: "))
+                     (is (not-empty (:title res)))
+                     (is (= 0 (:score res)))
+                     (is (= 0 (:comment_count res)))
+                     (is (nil? (:url res)))))
+            (.catch (fn [err]
+                      (is false (str "Unexpected error: " (.-message err)))))
+            (.finally (fn []
+                        (set! hn/item orig-item)
+                        (done))))))))
 
 ;; Test method-route
 (deftest test-method-route

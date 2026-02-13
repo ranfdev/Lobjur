@@ -13,8 +13,13 @@
    [rollui.resource-view :as rv]))
 
 (defn story-item-widget
-  [{:keys [title url score created_at comment_count tags submitter] :as story}]
+  [{:keys [title url score created_at comment_count submitter item_type] :as story}]
   (let [has-url? (not-empty url)
+        is-comment? (= item_type "comment")
+        display-title (or (not-empty title) (when is-comment? "Comment") "Untitled")
+        safe-comment-count (or comment_count 0)
+        author-name (or submitter "unknown")
+        author-href (hal-link story :author)
         domain-href (hal-link story :domain-stories)
         tag-story-links (get-in story [:_links :tag-stories])]
     [Gtk/Box
@@ -28,71 +33,78 @@
        :hexpand true
        :.append
        (list
-        (if has-url?
-          [Gtk/Label
-           :margin-top 4
-           :margin-bottom 4
-           :xalign 0.0
-           :label title
-           :wrap true
-           :wrap-mode Pango/WrapMode.WORD_CHAR
-           :css_classes #js ["small" "button" "heading" "flat"]]
-          [Gtk/Label :label title :wrap true :xalign 0.0
-           :hexpand true
-           :css_classes #js ["heading"]
-           :margin-start 8 :margin-top 4])
-        [Adw/WrapBox
-         :child-spacing 8
-         :line-spacing 4
-         :.append
-         (when domain-href
-           (let [host (get-in story [:_links :domain-stories :name]
-                              ;; fallback: extract host from external URL
-                              (some-> (hal-link story :external)
-                                      (str/replace #"^https?://" "")
-                                      (str/replace #"/.*" "")))]
+         (if has-url?
+           [Gtk/Label
+            :margin-top 4
+            :margin-bottom 4
+            :xalign 0.0
+            :label display-title
+            :wrap true
+            :wrap-mode Pango/WrapMode.WORD_CHAR
+            :css_classes #js ["small" "button" "heading" "flat"]]
+           [Gtk/Label :label display-title :wrap true :xalign 0.0
+            :hexpand true
+            :css_classes #js ["heading"]
+            :margin-start 8 :margin-top 4])
+         [Adw/WrapBox
+          :child-spacing 8
+          :line-spacing 4
+          :.append
+          (concat
+           (when domain-href
+             (let [host (get-in story [:_links :domain-stories :name]
+                                ;; fallback: extract host from external URL
+                                (some-> (hal-link story :external)
+                                        (str/replace #"^https?://" "")
+                                        (str/replace #"/.*" "")))]
+               [[Gtk/Button
+                 :.add_css_class (list "small" "button" "flat" "caption")
+                 :halign Gtk/Align.START
+                 :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
+                 :label host]]))
+           (for [tl tag-story-links
+                 :let [t (:name tl)
+                       href (:href tl)]]
              [Gtk/Button
-              :.add_css_class (list "small" "button" "flat" "caption")
-              :halign Gtk/Align.START
-              :$clicked #(state/send [:push-domain-stories {:href domain-href :title (str host " Stories")}])
-              :label host]))
-         :.append
-         (for [tl tag-story-links
-               :let [t (:name tl)
-                     href (:href tl)]]
-           [Gtk/Button
-            :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
-            :label t
-            :valign Gtk/Align.CENTER
-            :.add_css_class (list "small" "flat" "tag" "caption")])]
-        [Gtk/Box
-         :spacing 2
-         :halign Gtk/Align.START
-         :.append
-         (list
-          [Gtk/Button
-           :$clicked #(state/send [:push-user {:href (hal-link story :author) :title submitter}])
-           :label submitter
-           :css_classes #js ["small" "button" "flat" "body"]]
-           (time-ago-label created_at :css_classes #js ["dim-label"]))])]
-      [Gtk/Button
-       :valign Gtk/Align.CENTER
-       :tooltip-text "View comments"
-       :css_classes #js ["button" "flat"]
-       :$clicked (fn [btn]
-                   (let [row (loop [w (.get_parent ^js btn)]
-                               (if (instance? Gtk/ListBoxRow w) w
-                                   (when w (recur (.get_parent ^js w)))))]
-                     (when row
-                       (.select_row ^js (.get_parent ^js row) row))
-                     (state/send [:select-story (assoc story :initial-view :comments)])))
-       :child
-       [Gtk/Overlay
+              :$clicked #(state/send [:push-tagged-stories {:href href :title (str t " Stories")}])
+              :label t
+              :valign Gtk/Align.CENTER
+              :.add_css_class (list "small" "flat" "tag" "caption")]))]
+         [Gtk/Box
+          :spacing 2
+          :halign Gtk/Align.START
+          :.append
+          (let [meta-items
+                (cond-> [(if author-href
+                           [Gtk/Button
+                            :$clicked #(state/send [:push-user {:href author-href :title author-name}])
+                            :label author-name
+                            :css_classes #js ["small" "button" "flat" "body"]]
+                           [Gtk/Label :label author-name
+                            :css_classes #js ["small" "dim-label"]
+                            :xalign 0.0])
+                         (time-ago-label created_at :css_classes #js ["dim-label"])]
+                  is-comment? (conj [Gtk/Label :label "Comment"
+                                     :css_classes #js ["caption" "tag"]]))]
+            (seq meta-items))])]
+       [Gtk/Button
+        :valign Gtk/Align.CENTER
+        :tooltip-text "View comments"
+        :css_classes #js ["button" "flat"]
+        :$clicked (fn [btn]
+                    (let [row (loop [w (.get_parent ^js btn)]
+                                (if (instance? Gtk/ListBoxRow w) w
+                                    (when w (recur (.get_parent ^js w)))))]
+                      (when row
+                        (.select_row ^js (.get_parent ^js row) row))
+                      (state/send [:select-story (assoc story :initial-view :comments)])))
         :child
-        [Gtk/Image :pixel_size 28 :opacity 0.5 :icon_name "user-idle-symbolic"]
-        :.add_overlay [Gtk/Label
-                       :css_classes #js ["caption-heading" "numeric"]
-                       :label (str comment_count)]]])]))
+        [Gtk/Overlay
+         :child
+         [Gtk/Image :pixel_size 28 :opacity 0.5 :icon_name "user-idle-symbolic"]
+         :.add_overlay [Gtk/Label
+                        :css_classes #js ["caption-heading" "numeric"]
+                        :label (str safe-comment-count)]]])]))
 
 (defn- story-item-placeholder-widget []
   [Gtk/Box

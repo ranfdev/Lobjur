@@ -14,11 +14,12 @@
   (let [native-id (:id story)
         url (:url story)]
     {:id            native-id
-     :provider      "hackernews"
-     :title         (:title story)
-     :url           url
-     :score         (:score story)
-     :comment_count (:descendants story)
+      :provider      "hackernews"
+      :item_type     "story"
+      :title         (:title story)
+      :url           url
+      :score         (:score story)
+      :comment_count (:descendants story)
      :created_at    (when (:time story)
                       (-> (js/Date. (* (:time story) 1000))
                           (.toISOString)))
@@ -50,8 +51,35 @@
      :author     (:by comment)
      :score      0
      :_links     (cond-> {:self (hal/link (str "/hackernews/comments/" id))}
-                   (:by comment) (assoc :author (hal/link (str "/hackernews/users/" (:by comment))))
-                   (seq kids) (assoc :replies (hal/link (str "/hackernews/comments/" id "/replies?kids=" (str/join "," kids)))))}))
+                    (:by comment) (assoc :author (hal/link (str "/hackernews/users/" (:by comment))))
+                    (seq kids) (assoc :replies (hal/link (str "/hackernews/comments/" id "/replies?kids=" (str/join "," kids)))))}))
+
+(defn- format-time
+  [unix-time]
+  (when unix-time
+    (-> (js/Date. (* unix-time 1000))
+        (.toISOString))))
+
+(defn- truncate-with-ellipsis
+  [s max-len]
+  (if (<= (count s) max-len)
+    s
+    (str (subs s 0 (max 0 (dec max-len))) "…")))
+
+(defn- comment-title
+  [html-text]
+  (let [plain (some-> html-text
+                      html->text
+                      (str/replace #"\s+" " ")
+                      str/trim)
+        first-chunk (some-> plain
+                            (str/split #"(?:[\n.!?]+)")
+                            first
+                            str/trim)
+        candidate (or (not-empty first-chunk) (not-empty plain))]
+    (if candidate
+      (str "Comment: " (truncate-with-ellipsis candidate 80))
+      "Comment")))
 
 (defn- filter-comments
   "Filter out deleted and dead comments."
@@ -115,25 +143,50 @@
 
 (defn- story-handler [{:keys [params]}]
   (-> (hn/item (:id params))
-      (.then (fn [story]
-               (let [id (:id story)]
-                 (hal/resource
-                   (merge (hal/story-links "hackernews" id
-                                           :external-url (not-empty (:url story))
-                                           :author (:by story))
-                          {:feed (hal/link "/hackernews")})
-                   {:id            id
-                   :provider      "hackernews"
-                   :title         (:title story)
-                   :url           (:url story)
-                   :score         (:score story)
-                   :comment_count (:descendants story)
-                   :text          (:text story)
-                   :created_at    (when (:time story)
-                                    (-> (js/Date. (* (:time story) 1000))
-                                        (.toISOString)))
-                   :submitter     (:by story)
-                   :tags          []}))))))
+      (.then (fn [item]
+               (let [id (:id item)
+                     item-type (:type item)]
+                  (hal/resource
+                    (merge (hal/story-links "hackernews" id
+                                            :external-url (not-empty (:url item))
+                                            :author (:by item))
+                           {:feed (hal/link "/hackernews")})
+                    (case item-type
+                      "story"
+                      {:id            id
+                       :provider      "hackernews"
+                       :item_type     "story"
+                       :title         (:title item)
+                       :url           (:url item)
+                       :score         (:score item)
+                       :comment_count (:descendants item)
+                       :text          (:text item)
+                       :created_at    (format-time (:time item))
+                       :submitter     (:by item)
+                       :tags          []}
+                      "comment"
+                      {:id            id
+                       :provider      "hackernews"
+                       :item_type     "comment"
+                       :title         (comment-title (:text item))
+                       :url           nil
+                       :score         0
+                       :comment_count 0
+                       :text          (:text item)
+                       :created_at    (format-time (:time item))
+                       :submitter     (:by item)
+                       :tags          []}
+                      {:id            id
+                       :provider      "hackernews"
+                       :item_type     (or item-type "item")
+                       :title         (or (:title item) "Item")
+                       :url           (:url item)
+                       :score         (or (:score item) 0)
+                       :comment_count (or (:descendants item) 0)
+                       :text          (:text item)
+                       :created_at    (format-time (:time item))
+                       :submitter     (:by item)
+                       :tags          []})))))))
 
 (defn- comment-replies-handler [{:keys [params query]}]
   (let [comment-id (:id params)
