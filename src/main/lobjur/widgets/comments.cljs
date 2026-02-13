@@ -7,7 +7,7 @@
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
    [lobjur.state :as state]
-   [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
+   [lobjur.widgets.shared :refer [html-link-activate pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
    [api.helpers :refer [external-url fetch-collection hal-link has-relation? next-page prev-page]]
    [lobjur.utils.common :refer [html->text]]
@@ -77,7 +77,7 @@
          :margin-start 8
          :margin-end 8
          :margin-bottom 8
-          :child (h2g/render-html-widget text)])]))
+           :child (h2g/render-html-widget text {:on-link-activate html-link-activate})])]))
 
 (declare comment-tree-widget)
 
@@ -221,7 +221,7 @@
                    :hexpand true
                    :margin-start 8
                    :margin-end 8
-                   :child (h2g/render-html-widget text)]
+                   :child (h2g/render-html-widget text {:on-link-activate html-link-activate})]
                   [Gtk/Box]))
              :on-loading (fn [_] [Gtk/Box])})])
        :.append

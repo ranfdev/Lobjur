@@ -16,8 +16,9 @@ function escapeMarkup(value) {
 }
 
 export class Html2GtkStream {
-    constructor(rootWidget) {
+    constructor(rootWidget, options = {}) {
         this.root = rootWidget || new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4, hexpand: true });
+        this.onLinkActivate = typeof options.onLinkActivate === 'function' ? options.onLinkActivate : null;
         this.currentContainer = this.root;
         this.tagStack = [];
         this.inlineStack = [];
@@ -295,6 +296,7 @@ export class Html2GtkStream {
         }
 
         this._applyRunClasses(label, runs);
+        this._connectLinkActivation(label, runs);
         this._appendToCurrent(label);
     }
 
@@ -315,6 +317,9 @@ export class Html2GtkStream {
         if (style.strikethrough) {
             markup = `<s>${markup}</s>`;
         }
+        if (style.linkHref) {
+            markup = `<a href="${escapeMarkup(style.linkHref)}">${markup}</a>`;
+        }
         return markup;
     }
 
@@ -329,10 +334,42 @@ export class Html2GtkStream {
         }
 
         const links = [...new Set(runs.map(run => run.style.linkHref).filter(Boolean))];
+        if (links.length > 0) {
+            label.add_css_class('html-link');
+        }
         if (links.length === 1) {
-            label.add_css_class('link');
             label.set_tooltip_text(links[0]);
         }
+    }
+
+    _connectLinkActivation(label, runs) {
+        const links = runs.map(run => run.style.linkHref).filter(Boolean);
+        if (links.length === 0 || typeof label.connect !== 'function') {
+            return;
+        }
+
+        label.connect('activate-link', (_self, href) => {
+            if (this.onLinkActivate) {
+                try {
+                    if (this.onLinkActivate(href) !== false) {
+                        return true;
+                    }
+                } catch (error) {
+                    if (typeof logError === 'function') {
+                        logError(error);
+                    } else {
+                        console.error(error);
+                    }
+                    return true;
+                }
+            }
+
+            if (href && /^https?:\/\//i.test(href)) {
+                Gtk.show_uri(null, href, 0);
+                return true;
+            }
+            return false;
+        });
     }
 
     _applyGlobalAttributes(widget, attrs) {

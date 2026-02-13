@@ -37,10 +37,15 @@
        <li>Ordered item 1</li>
        <li>Ordered item 2</li>
      </ol>
-   </main>")
+    </main>")
+
+(defn- open-demo-link [href]
+  (when href
+    (Gtk/show_uri nil href 0)
+    true))
 
 (defn activate [app]
-  (let [content (h2g/render-html-widget demo-html)
+  (let [content (h2g/render-html-widget demo-html {:on-link-activate open-demo-link})
          _ (.add_css_class ^js content "demo-html-root")
          scroller (Gtk/ScrolledWindow. #js {:vexpand true
                                             :hexpand true

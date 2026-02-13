@@ -46,7 +46,11 @@
    .html-heading.h3 { font-size: 1.35em; font-weight: 700; }
    .html-heading.h4 { font-size: 1.20em; font-weight: 700; }
    .html-heading.h5 { font-size: 1.08em; font-weight: 700; }
-   .html-heading.h6 { font-size: 0.98em; font-weight: 700; }")
+   .html-heading.h6 { font-size: 0.98em; font-weight: 700; }
+   .html-content link:hover {
+      text-decoration: underline;
+      opacity: 0.9;
+   }")
 
 (def demo-css
   (str ".demo-html2gtk-window headerbar {

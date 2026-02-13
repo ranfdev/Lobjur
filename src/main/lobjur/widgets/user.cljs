@@ -8,6 +8,7 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
+   [lobjur.widgets.shared :refer [html-link-activate]]
    [api.router :as api]
    [api.helpers :refer [hal-link]]
    [rollui.resource :as r]
@@ -62,8 +63,8 @@
                           :xalign 0.0
                           :yalign 0.0
                           :css_classes #js ["heading"]]
-                        :.append
-                         (h2g/render-html-widget about)])
+                         :.append
+                          (h2g/render-html-widget about {:on-link-activate html-link-activate})])
         fields (cond-> []
                  (seq created_at)
                  (conj ["Joined" created_at nil])

@@ -1,6 +1,8 @@
 (ns lobjur.widgets.shared
   (:require
-   ["gjs.gi.Gtk" :as Gtk]))
+   ["gjs.gi.Gtk" :as Gtk]
+   [api.url :as api-url]
+   [lobjur.state :as state]))
 
 (defn upvote-btn [score]
   [Gtk/Box
@@ -74,3 +76,25 @@
            :label label
            :tooltip-text (.toLocaleString date)]
           (mapcat identity (dissoc props :suffix)))))
+
+(defn html-link-activate [href]
+  (when (seq href)
+    (let [{:keys [scheme path]} (api-url/parse-url href)
+          normalized (api-url/normalize-url href)]
+      (cond
+        (#{:https :http} scheme)
+        (do (Gtk/show_uri nil href 0) true)
+
+        :else
+        (if-let [[_ _provider username suffix]
+                 (re-matches #"^/(lobsters|hackernews)/users/([^/]+)(/stories)?$" path)]
+          (do
+            (if suffix
+              (state/send [:push-user-stories {:href normalized
+                                               :title (str username "'s Stories")}])
+              (state/send [:push-user {:href normalized
+                                       :title username}]))
+            true)
+          (do
+            (state/send [:push-user-stories {:href normalized :title "Linked Page"}])
+            true))))))
