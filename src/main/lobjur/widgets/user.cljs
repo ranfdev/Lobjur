@@ -8,11 +8,11 @@
    ["gjs.gi.Pango" :as Pango]
    [lobjur.state :as state]
    [lobjur.utils.http :as http]
-   [lobjur.utils.common :refer [html->text]]
    [api.router :as api]
    [api.helpers :refer [hal-link]]
    [rollui.resource :as r]
-   [rollui.resource-view :as rv]))
+   [rollui.resource-view :as rv]
+   [html2gtk.core :as h2g]))
 
 (defn pixbuf-to-texture [px]
   (Gdk/Texture.new_for_pixbuf px))
@@ -52,10 +52,19 @@
 (defn loaded-user-view [{:keys [username avatar_url karma about created_at invited_by is_admin is_moderator] :as user}]
   (let [stories-href (hal-link user :stories)
         invited-by-href (hal-link user :invited_by)
-        about-text (when (seq about) (html->text about))
+        about-widget (when (seq about)
+                       [Gtk/Box
+                        :orientation Gtk/Orientation.HORIZONTAL
+                        :spacing 8
+                        :.append
+                         [Gtk/Label
+                          :label "About"
+                          :xalign 0.0
+                          :yalign 0.0
+                          :css_classes #js ["heading"]]
+                        :.append
+                         (h2g/render-html-widget about)])
         fields (cond-> []
-                 (seq about-text)
-                 (conj ["About" about-text nil])
                  (seq created_at)
                  (conj ["Joined" created_at nil])
                  (seq invited_by)
@@ -64,7 +73,11 @@
                  (conj ["Role" "Admin" nil])
                  (and is_moderator (not is_admin))
                  (conj ["Role" "Moderator" nil]))
-        field-rows (map (fn [[label value href]] (user-field-row label value href)) fields)]
+        field-rows (map (fn [[label value href]] (user-field-row label value href)) fields)
+        detail-rows (into (cond-> (list)
+                            about-widget
+                            (conj about-widget))
+                          field-rows)]
     [Gtk/Box
      :orientation Gtk/Orientation.VERTICAL
      :spacing 8
@@ -93,15 +106,16 @@
         :label username
         :xalign 0
         :.add_css_class "title-1"]
-        :.append
-        [Gtk/Label
-         :xalign 0
-         :label (str "Karma: " karma)]]]
+       :.append
+       [Gtk/Label
+        :xalign 0
+        :label (str "Karma: " karma)]]]
      :.append
      [Gtk/Box
       :orientation Gtk/Orientation.VERTICAL
       :spacing 8
-      :.append field-rows]
+      :.append (if (seq detail-rows) detail-rows [])
+      ]
      :.append
      [Gtk/Button
       :label "Newest Stories"

@@ -6,7 +6,6 @@
    ["gjs.gi.Gtk" :as Gtk]
    ["gjs.gi.Pango" :as Pango]
    [clojure.string :as str]
-   [html2gtk.core :as h2g]
    [lobjur.state :as state]
    [lobjur.widgets.shared :refer [pagination-controls time-ago-label upvote-btn]]
    [api.router :as api]
@@ -14,20 +13,12 @@
    [lobjur.utils.common :refer [html->text]]
    [rollui.core :refer [derived-atom]]
    [rollui.resource :as r]
-   [rollui.resource-view :as rv]))
+   [rollui.resource-view :as rv]
+   [html2gtk.core :as h2g]))
 
 (defn- count-descendants [comment]
   (let [replies (or (get-in comment [:_embedded :replies]) [])]
     (+ (count replies) (reduce + 0 (map count-descendants replies)))))
-
-(defn- mount-html-widget! [bin html]
-  (let [current-child (.get_child ^js bin)
-        mounted-html (aget ^js bin "__lobjur_mounted_html")]
-    (when (or (nil? current-child) (not= mounted-html html))
-      (aset ^js bin "__lobjur_mounted_html" html)
-      (when current-child
-        (.set_child ^js bin nil))
-      (.set_child ^js bin (h2g/render-html-widget html)))))
 
 (defn- comment-content-widget [comment depth {:keys [icon-name tooltip-text toggle! chip-widget has-linked-replies?]}]
   (let [{:keys [text author]} comment
@@ -86,7 +77,7 @@
          :margin-start 8
          :margin-end 8
          :margin-bottom 8
-         :$map (fn [bin] (mount-html-widget! bin text))])]))
+          :child (h2g/render-html-widget text)])]))
 
 (declare comment-tree-widget)
 
@@ -230,7 +221,7 @@
                    :hexpand true
                    :margin-start 8
                    :margin-end 8
-                   :$map (fn [bin] (mount-html-widget! bin text))]
+                   :child (h2g/render-html-widget text)]
                   [Gtk/Box]))
              :on-loading (fn [_] [Gtk/Box])})])
        :.append
