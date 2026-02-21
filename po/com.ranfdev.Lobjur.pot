@@ -1,0 +1,70 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-08-16 10:55-0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/main/lobjur/main.cljs:59
+msgid "Comments"
+msgstr ""
+
+#: src/main/lobjur/main.cljs:126
+msgid "Command line arguments are: "
+msgstr ""
+
+#: src/main/lobjur/widgets/comments.cljs:121
+msgid "No comments available"
+msgstr ""
+
+#: src/main/lobjur/widgets/stories_list_view.cljs:109
+msgid "No Stories Available"
+msgstr ""
+
+#: src/main/lobjur/widgets/stories_list_view.cljs:117
+msgid "Previous"
+msgstr ""
+
+#: src/main/lobjur/widgets/stories_list_view.cljs:127
+msgid "Next"
+msgstr ""
+
+#: src/main/lobjur/widgets/stories_list_view.cljs:134
+msgid "Hottest"
+msgstr ""
+
+#: src/main/lobjur/widgets/stories_list_view.cljs:137
+msgid "Active"
+msgstr ""
+
+#: src/main/lobjur/widgets/user.cljs:65
+msgid "Karma: "
+msgstr ""
+
+#: src/main/lobjur/widgets/user.cljs:69
+msgid "Newest Stories"
+msgstr ""
+
+#: src/main/rollui/core.cljs:25
+msgid "Error in promise, in update-prop-many"
+msgstr ""
+
+#: src/main/rollui/core.cljs:37
+msgid "Can't build widget with constructor"
+msgstr ""
+
+#: src/main/rollui/core.cljs:38
+msgid "The constructor arguments were"
+msgstr ""
