@@ -5,7 +5,11 @@
   <metadata_license>CC0</metadata_license>
   <project_license>GPL-3.0+</project_license>
   <name>Lobjur</name>
-  <summary>Native GNOME client for Lobsters and Hacker News</summary>
+  <summary>Browse Lobsters and Hacker News</summary>
+  <branding>
+	<color type="primary" scheme_preference="light">#ce5050</color>
+	<color type="primary" scheme_preference="dark">#c15327</color>
+  </branding>
   <description>
     <p>Native GNOME client for Lobsters and Hacker News, featuring multiple feeds, collapsible comments, and an integrated web view.</p>
   </description>
